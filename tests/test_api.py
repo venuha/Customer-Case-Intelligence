@@ -3,6 +3,13 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def isolate_request_rate_limits():
+    from app.api.application import limits
+
+    limits.clear()
+
+
 @pytest.fixture(scope="module")
 def client(tmp_path_factory):
     import os, secrets
@@ -156,7 +163,8 @@ def test_role_access_and_revocation(client):
     )
     assert client.post("/api/logout").status_code == 200
     assert client.get("/api/cases").status_code == 401
-    client.cookies.set("cci_session", head_cookie)
+    client.cookies.clear()
+    client.cookies.set("cci_session", head_cookie, domain="testserver.local", path="/")
 
 
 def test_pdf_handoff_is_scoped_and_valid(client):
@@ -180,3 +188,95 @@ def test_client_cannot_grant_itself_a_role(client):
         ).status_code
         == 422
     )
+
+
+def test_registration_never_grants_session_or_roles(client):
+    import secrets
+
+    password = secrets.token_urlsafe(24)
+    previous = client.cookies.get("cci_session")
+    response = client.post(
+        "/api/register", json={"username": "pending_api", "password": password}
+    )
+    assert response.status_code == 202 and not response.headers.get("set-cookie")
+    assert client.cookies.get("cci_session") == previous
+    assert (
+        client.post(
+            "/api/login", json={"username": "pending_api", "password": password}
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/register",
+            json={
+                "username": "attacker",
+                "password": password,
+                "role": "head",
+                "case_ids": ["CASE-1001"],
+            },
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/api/register", json={"username": "weak", "password": "short"}
+        ).status_code
+        == 422
+    )
+
+
+def test_head_approves_pending_user_with_explicit_case_access(client):
+    import secrets
+
+    password = secrets.token_urlsafe(24)
+    assert (
+        client.post(
+            "/api/register", json={"username": "review_candidate", "password": password}
+        ).status_code
+        == 202
+    )
+    assert (
+        "review_candidate"
+        in client.get("/api/admin/account-requests").json()["usernames"]
+    )
+    assert (
+        client.post(
+            "/api/admin/account-requests/review_candidate/approve",
+            json={"role": "head", "case_ids": ["CASE-1001"]},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/api/admin/account-requests/review_candidate/approve",
+            json={"role": "customer_service", "case_ids": ["CASE-9999"]},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/admin/account-requests/review_candidate/approve",
+            json={"role": "customer_service", "case_ids": ["CASE-1001"]},
+        ).status_code
+        == 200
+    )
+    cookie = client.cookies.get("cci_session")
+    assert (
+        client.post(
+            "/api/login", json={"username": "review_candidate", "password": password}
+        ).status_code
+        == 200
+    )
+    assert client.get("/api/cases/CASE-1001").status_code == 200
+    assert client.get("/api/cases/CASE-1002").status_code == 404
+    assert client.get("/api/admin/account-requests").status_code == 403
+    assert (
+        client.post(
+            "/api/admin/account-requests/pending_api/approve",
+            json={"role": "supervisor", "case_ids": ["CASE-1001"]},
+        ).status_code
+        == 403
+    )
+    client.cookies.clear()
+    client.cookies.set("cci_session", cookie, domain="testserver.local", path="/")

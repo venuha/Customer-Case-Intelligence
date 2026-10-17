@@ -4,19 +4,28 @@ import argparse, getpass, json, secrets, sys, os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.security.auth import create_user
+from app.security.auth import create_user, approve_user, pending_users
 from app.config import data_dir, runtime_dir
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("action", choices=["create", "demo"])
+    p.add_argument("action", choices=["create", "demo", "pending", "approve"])
     p.add_argument("--username")
     p.add_argument("--role", choices=["customer_service", "supervisor", "head"])
     p.add_argument("--cases", nargs="+")
     args = p.parse_args()
     cases = [c["id"] for c in json.loads((data_dir() / "cases.json").read_text())]
-    if args.action == "demo":
+    if args.action == "pending":
+        print("\n".join(pending_users()) or "No pending account requests.")
+    elif args.action == "approve":
+        if not args.username or not args.role or not args.cases:
+            p.error("Approval requires --username, --role and explicit --cases")
+        if not set(args.cases) <= set(cases):
+            p.error("Unknown case ID")
+        approve_user(args.username, args.role, args.cases)
+        print("Account approved with explicit role and case assignments.")
+    elif args.action == "demo":
         users = []
         for name, role, assigned in [
             ("service", "customer_service", cases[:4]),

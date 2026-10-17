@@ -33,7 +33,7 @@ def password_hash(password, salt):
     ).hex()
 
 
-def create_user(username, password, role, case_ids):
+def create_user(username, password, role, case_ids, *, active=True):
     if role not in ROLES:
         raise ValueError("Unknown role")
     if (
@@ -42,19 +42,20 @@ def create_user(username, password, role, case_ids):
         or not username.replace("_", "").replace("-", "").replace(".", "").isalnum()
     ):
         raise ValueError("Use a simple username")
-    if len(password) < 12:
+    if len(password) < 12 or len(password) > 512:
         raise ValueError("Password must have at least 12 characters")
     initialize()
     salt = secrets.token_hex(16)
     with sqlite3.connect(database()) as db:
         db.execute(
-            "INSERT INTO users(username,role,case_ids,salt,password_hash) VALUES(?,?,?,?,?)",
+            "INSERT INTO users(username,role,case_ids,salt,password_hash,active) VALUES(?,?,?,?,?,?)",
             (
                 username,
                 role,
                 json.dumps(sorted(set(case_ids))),
                 salt,
                 password_hash(password, salt),
+                int(active),
             ),
         )
 
@@ -107,3 +108,36 @@ def revoke(token):
             "DELETE FROM sessions WHERE token_hash=?",
             (hashlib.sha256(token.encode()).hexdigest(),),
         )
+
+
+def request_account(username, password):
+    """Public registration never grants case access or creates a session."""
+    try:
+        create_user(username, password, "customer_service", [], active=False)
+    except sqlite3.IntegrityError:
+        # Same response for existing accounts; never replace their password.
+        pass
+
+
+def approve_user(username, role, case_ids):
+    if role not in ROLES or not case_ids:
+        raise ValueError("Select a valid role and at least one case.")
+    initialize()
+    with sqlite3.connect(database()) as db:
+        result = db.execute(
+            "UPDATE users SET role=?,case_ids=?,active=1 WHERE username=? AND active=0",
+            (role, json.dumps(sorted(set(case_ids))), username),
+        )
+        if result.rowcount != 1:
+            raise ValueError("Pending account not found.")
+
+
+def pending_users():
+    initialize()
+    with sqlite3.connect(database()) as db:
+        return [
+            r[0]
+            for r in db.execute(
+                "SELECT username FROM users WHERE active=0 ORDER BY username"
+            )
+        ]

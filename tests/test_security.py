@@ -40,3 +40,32 @@ def test_hashed_revocable_sessions(tmp_path, monkeypatch):
     revoke(token)
     with pytest.raises(HTTPException):
         require_user(request)
+
+
+def test_registration_waits_for_explicit_approval(tmp_path, monkeypatch):
+    from app.security.auth import request_account, approve_user, pending_users
+
+    monkeypatch.setenv("CCI_RUNTIME_DIR", str(tmp_path))
+    password = secrets.token_urlsafe(24)
+    request_account("new_user", password)
+    assert pending_users() == ["new_user"]
+    assert authenticate("new_user", password) is None
+    with pytest.raises(ValueError):
+        approve_user("new_user", "head", [])
+    approve_user("new_user", "customer_service", ["CASE-1001"])
+    user = authenticate("new_user", password)
+    assert user.role == "customer_service" and user.case_ids == ("CASE-1001",)
+    assert not user.can_access_case("CASE-1002")
+    assert pending_users() == []
+
+
+def test_duplicate_registration_cannot_replace_password(tmp_path, monkeypatch):
+    from app.security.auth import request_account
+
+    monkeypatch.setenv("CCI_RUNTIME_DIR", str(tmp_path))
+    original = secrets.token_urlsafe(24)
+    replacement = secrets.token_urlsafe(24)
+    create_user("existing", original, "head", ["CASE-1001"])
+    request_account("existing", replacement)
+    assert authenticate("existing", original).role == "head"
+    assert authenticate("existing", replacement) is None

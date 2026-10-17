@@ -7,11 +7,15 @@ from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
+from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Depends
 from ..config import runtime_dir
 from ..security.auth import (
     initialize,
+    request_account,
+    pending_users,
+    approve_user,
     authenticate,
     new_session,
     require_user,
@@ -179,6 +183,21 @@ class Login(BaseModel):
     password: str = Field(min_length=1, max_length=512)
 
 
+class Registration(Login):
+    password: str = Field(min_length=12, max_length=512)
+
+
+@app.post("/api/register", status_code=202)
+def register(credentials: Registration):
+    try:
+        request_account(credentials.username, credentials.password)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+    return {
+        "message": "If this username is available, your account request has been saved. An administrator must approve your access and assign cases before you can sign in. If you already have an account, use your existing password or contact your administrator."
+    }
+
+
 @app.post("/api/login")
 def login(credentials: Login):
     user = authenticate(credentials.username, credentials.password)
@@ -194,6 +213,37 @@ def login(credentials: Login):
         max_age=SESSION_TTL,
     )
     return response
+
+
+class AccountApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["customer_service", "supervisor"]
+    case_ids: list[str] = Field(min_length=1, max_length=100)
+
+
+@app.get("/api/admin/account-requests")
+def account_requests(user=Depends(require_user)):
+    if user.role != "head":
+        raise HTTPException(403, "Head approval is required.")
+    return {"usernames": pending_users()}
+
+
+@app.post("/api/admin/account-requests/{username}/approve")
+def approve_account(
+    username: str, approval: AccountApproval, user=Depends(require_user)
+):
+    if user.role != "head":
+        raise HTTPException(403, "Head approval is required.")
+    if any(
+        cid not in state["cases"] or not user.can_access_case(cid)
+        for cid in approval.case_ids
+    ):
+        raise HTTPException(403, "You can only assign cases within your own access.")
+    try:
+        approve_user(username, approval.role, approval.case_ids)
+    except ValueError:
+        raise HTTPException(404, "Pending account not found.") from None
+    return {"approved": True}
 
 
 @app.get("/api/me")

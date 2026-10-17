@@ -3,3 +3,5 @@
 .brand-subtitle{margin:9px 0 0 41px;font-size:8px;letter-spacing:.35px;color:#aebfae;line-height:1.5}.rail-note strong{line-height:1.4}@media(max-width:850px){.brand-subtitle{display:none}}
 
 #login-layer{position:fixed;inset:0;z-index:999;background:#f4f2ea;display:grid;place-items:center}#login-form{max-width:520px;padding:48px;background:white;border:1px solid #ddd;border-radius:20px;box-shadow:0 24px 90px #10292220}#login-form label{display:block;margin:20px 0}#login-form input{display:block;width:100%;padding:12px;margin-top:8px;border:1px solid #ccc;border-radius:8px}#login-error{color:#a03822}
+
+.assignment-choice{display:block;margin:9px 0}.approval-form{margin-bottom:20px;max-width:720px}.approval-form select{padding:8px;border:1px solid #ccc;border-radius:6px}

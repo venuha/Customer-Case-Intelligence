@@ -56,3 +56,17 @@ The application defaults to fixed-size hybrid retrieval; users can opt into cros
 
 ## Security and publication
 Never commit `.env`, `work/`, local indexes, model caches, private identities/sessions, customer data or real provider responses. Run `python scripts/scan_publication.py` before publishing. Reports contain architecture and aggregate evaluation results, never keys. No external payment, dispute, ticket or customer message is executed. This prototype requires further production security and provider integration work before real customer use.
+
+## New account requests
+Choose **New here? Request an account** on the sign-in page. Registration stores a salted password hash and creates a pending account with no cases or session; existing usernames receive the same generic acknowledgement and their passwords are never replaced.
+
+A signed-in **head** can open **Account requests**, choose customer service or supervisor access, select permitted cases, and approve. The server prevents assigning cases outside the approver's own access. Head access can only be granted through local administration.
+
+An administrator on the application host can also review and approve requests with explicit permissions:
+
+```sh
+python scripts/manage_users.py pending
+python scripts/manage_users.py approve --username NAME --role customer_service --cases CASE-1001
+```
+
+The user can then sign in with the password they chose. Approval does not send email; this prototype uses local administrator review. Only an authenticated head or the host administrator can approve operational access. New users cannot select supervisor/head access or grant themselves cases.
