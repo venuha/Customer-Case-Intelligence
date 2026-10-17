@@ -1,0 +1,603 @@
+{
+  "dataset": "Eight supplemental financial allocation table questions; not included in the primary 32-query result",
+  "results": {
+    "fixed": {
+      "table_evidence_recall_at_6": 1.0,
+      "questions": [
+        {
+          "case_id": "CASE-1001",
+          "question": "For order ORD-24001, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1001-order",
+          "anchors": [
+            "Tax allocation | 71.89",
+            "Total for this record | 1099.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1001-order:p2:c0",
+            "CASE-1001-payment:p2:c0",
+            "CASE-1001-order:p1:c0",
+            "CASE-1001-payment:p1:c0",
+            "CASE-1001-return:p1:c0",
+            "CASE-1001-BANK-SHARED:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1002",
+          "question": "For order ORD-24002, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1002-order",
+          "anchors": [
+            "Tax allocation | 58.81",
+            "Total for this record | 899.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1002-order:p2:c0",
+            "CASE-1002-payment:p2:c0",
+            "CASE-1002-refund:p2:c0",
+            "CASE-1002-approval:p2:c0",
+            "CASE-1002-order:p1:c0",
+            "CASE-1002-approval:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1003",
+          "question": "For order ORD-24003, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1003-order",
+          "anchors": [
+            "Tax allocation | 104.54",
+            "Total for this record | 1598.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1003-refund:p2:c0",
+            "CASE-1003-approval:p2:c0",
+            "CASE-1003-order:p2:c0",
+            "CASE-1003-payment:p2:c0",
+            "CASE-1003-order:p1:c0",
+            "CASE-1003-approval:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1004",
+          "question": "For order ORD-24004, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1004-order",
+          "anchors": [
+            "Tax allocation | 42.45",
+            "Total for this record | 649.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1004-order:p2:c0",
+            "CASE-1004-payment:p2:c0",
+            "CASE-1004-refund:p2:c0",
+            "CASE-1004-approval:p2:c0",
+            "CASE-1004-order:p1:c0",
+            "CASE-1004-approval:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1005",
+          "question": "For order ORD-24005, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1005-order",
+          "anchors": [
+            "Tax allocation | 78.43",
+            "Total for this record | 1199.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1005-order:p2:c0",
+            "CASE-1005-payment:p2:c0",
+            "CASE-1005-order:p1:c0",
+            "CASE-1005-payment:p1:c0",
+            "CASE-1005-BANK-SHARED:p1:c0",
+            "CASE-1005-order:p1:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1006",
+          "question": "For order ORD-24006, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1006-order",
+          "anchors": [
+            "Tax allocation | 65.35",
+            "Total for this record | 999.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1006-order:p2:c0",
+            "CASE-1006-payment:p2:c0",
+            "CASE-1006-order:p1:c0",
+            "CASE-1006-payment:p1:c0",
+            "CASE-1006-BANK-SHARED:p1:c0",
+            "CASE-1006-conversation:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1007",
+          "question": "For order ORD-24007, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1007-order",
+          "anchors": [
+            "Tax allocation | 49.00",
+            "Total for this record | 749.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1007-order:p2:c0",
+            "CASE-1007-payment:p2:c0",
+            "CASE-1007-approval:p2:c0",
+            "CASE-1007-order:p1:c0",
+            "CASE-1007-approval:p1:c0",
+            "CASE-1007-payment:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1008",
+          "question": "For order ORD-24008, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1008-order",
+          "anchors": [
+            "Tax allocation | 84.98",
+            "Total for this record | 1299.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1008-order:p2:c0",
+            "CASE-1008-payment:p2:c0",
+            "CASE-1008-refund:p2:c0",
+            "CASE-1008-approval:p2:c0",
+            "CASE-1008-order:p1:c0",
+            "CASE-1008-approval:p1:c0"
+          ]
+        }
+      ]
+    },
+    "fixed_cross_encoder": {
+      "table_evidence_recall_at_6": 1.0,
+      "questions": [
+        {
+          "case_id": "CASE-1001",
+          "question": "For order ORD-24001, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1001-order",
+          "anchors": [
+            "Tax allocation | 71.89",
+            "Total for this record | 1099.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1001-order:p2:c0",
+            "CASE-1001-payment:p2:c0",
+            "CASE-1001-order:p1:c0",
+            "CASE-1001-order:p1:c1",
+            "CASE-1001-return:p1:c0",
+            "CASE-1001-payment:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1002",
+          "question": "For order ORD-24002, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1002-order",
+          "anchors": [
+            "Tax allocation | 58.81",
+            "Total for this record | 899.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1002-order:p2:c0",
+            "CASE-1002-approval:p2:c0",
+            "CASE-1002-order:p1:c0",
+            "CASE-1002-refund:p2:c0",
+            "CASE-1002-payment:p2:c0",
+            "CASE-1002-order:p1:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1003",
+          "question": "For order ORD-24003, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1003-order",
+          "anchors": [
+            "Tax allocation | 104.54",
+            "Total for this record | 1598.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1003-order:p2:c0",
+            "CASE-1003-approval:p2:c0",
+            "CASE-1003-order:p1:c0",
+            "CASE-1003-refund:p2:c0",
+            "CASE-1003-payment:p2:c0",
+            "CASE-1003-approval:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1004",
+          "question": "For order ORD-24004, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1004-order",
+          "anchors": [
+            "Tax allocation | 42.45",
+            "Total for this record | 649.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1004-order:p2:c0",
+            "CASE-1004-approval:p2:c0",
+            "CASE-1004-refund:p2:c0",
+            "CASE-1004-payment:p2:c0",
+            "CASE-1004-order:p1:c0",
+            "CASE-1004-order:p1:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1005",
+          "question": "For order ORD-24005, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1005-order",
+          "anchors": [
+            "Tax allocation | 78.43",
+            "Total for this record | 1199.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1005-order:p2:c0",
+            "CASE-1005-payment:p2:c0",
+            "CASE-1005-order:p1:c0",
+            "CASE-1005-order:p1:c1",
+            "CASE-1005-payment:p1:c0",
+            "CASE-1005-return:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1006",
+          "question": "For order ORD-24006, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1006-order",
+          "anchors": [
+            "Tax allocation | 65.35",
+            "Total for this record | 999.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1006-order:p2:c0",
+            "CASE-1006-order:p1:c0",
+            "CASE-1006-payment:p2:c0",
+            "CASE-1006-order:p1:c1",
+            "CASE-1006-payment:p1:c0",
+            "CASE-1006-return:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1007",
+          "question": "For order ORD-24007, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1007-order",
+          "anchors": [
+            "Tax allocation | 49.00",
+            "Total for this record | 749.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1007-order:p2:c0",
+            "CASE-1007-approval:p2:c0",
+            "CASE-1007-payment:p2:c0",
+            "CASE-1007-order:p1:c0",
+            "CASE-1007-approval:p1:c0",
+            "CASE-1007-order:p1:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1008",
+          "question": "For order ORD-24008, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1008-order",
+          "anchors": [
+            "Tax allocation | 84.98",
+            "Total for this record | 1299.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1008-order:p2:c0",
+            "CASE-1008-approval:p2:c0",
+            "CASE-1008-refund:p2:c0",
+            "CASE-1008-payment:p2:c0",
+            "CASE-1008-order:p1:c0",
+            "CASE-1008-approval:p1:c0"
+          ]
+        }
+      ]
+    },
+    "structure": {
+      "table_evidence_recall_at_6": 1.0,
+      "questions": [
+        {
+          "case_id": "CASE-1001",
+          "question": "For order ORD-24001, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1001-order",
+          "anchors": [
+            "Tax allocation | 71.89",
+            "Total for this record | 1099.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1001-order:p2:c0",
+            "CASE-1001-payment:p2:c1",
+            "CASE-1001-order:p2:c1",
+            "CASE-1001-payment:p2:c0",
+            "CASE-1001-payment:p1:c0",
+            "CASE-1001-order:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1002",
+          "question": "For order ORD-24002, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1002-order",
+          "anchors": [
+            "Tax allocation | 58.81",
+            "Total for this record | 899.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1002-payment:p2:c1",
+            "CASE-1002-order:p2:c0",
+            "CASE-1002-approval:p2:c1",
+            "CASE-1002-order:p2:c1",
+            "CASE-1002-approval:p2:c0",
+            "CASE-1002-refund:p2:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1003",
+          "question": "For order ORD-24003, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1003-order",
+          "anchors": [
+            "Tax allocation | 104.54",
+            "Total for this record | 1598.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1003-payment:p2:c1",
+            "CASE-1003-order:p2:c1",
+            "CASE-1003-approval:p2:c1",
+            "CASE-1003-refund:p2:c1",
+            "CASE-1003-payment:p2:c0",
+            "CASE-1003-order:p2:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1004",
+          "question": "For order ORD-24004, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1004-order",
+          "anchors": [
+            "Tax allocation | 42.45",
+            "Total for this record | 649.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1004-payment:p2:c1",
+            "CASE-1004-order:p2:c0",
+            "CASE-1004-approval:p2:c1",
+            "CASE-1004-order:p2:c1",
+            "CASE-1004-approval:p2:c0",
+            "CASE-1004-refund:p2:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1005",
+          "question": "For order ORD-24005, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1005-order",
+          "anchors": [
+            "Tax allocation | 78.43",
+            "Total for this record | 1199.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1005-order:p2:c0",
+            "CASE-1005-payment:p2:c1",
+            "CASE-1005-order:p2:c1",
+            "CASE-1005-payment:p2:c0",
+            "CASE-1005-order:p1:c2",
+            "CASE-1005-order:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1006",
+          "question": "For order ORD-24006, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1006-order",
+          "anchors": [
+            "Tax allocation | 65.35",
+            "Total for this record | 999.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1006-order:p2:c0",
+            "CASE-1006-payment:p2:c1",
+            "CASE-1006-order:p2:c1",
+            "CASE-1006-payment:p2:c0",
+            "CASE-1006-order:p1:c2",
+            "CASE-1006-order:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1007",
+          "question": "For order ORD-24007, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1007-order",
+          "anchors": [
+            "Tax allocation | 49.00",
+            "Total for this record | 749.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1007-order:p2:c1",
+            "CASE-1007-order:p2:c0",
+            "CASE-1007-payment:p2:c1",
+            "CASE-1007-approval:p2:c1",
+            "CASE-1007-payment:p2:c0",
+            "CASE-1007-approval:p2:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1008",
+          "question": "For order ORD-24008, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1008-order",
+          "anchors": [
+            "Tax allocation | 84.98",
+            "Total for this record | 1299.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1008-payment:p2:c1",
+            "CASE-1008-order:p2:c0",
+            "CASE-1008-approval:p2:c1",
+            "CASE-1008-order:p2:c1",
+            "CASE-1008-approval:p2:c0",
+            "CASE-1008-refund:p2:c1"
+          ]
+        }
+      ]
+    },
+    "structure_cross_encoder": {
+      "table_evidence_recall_at_6": 1.0,
+      "questions": [
+        {
+          "case_id": "CASE-1001",
+          "question": "For order ORD-24001, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1001-order",
+          "anchors": [
+            "Tax allocation | 71.89",
+            "Total for this record | 1099.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1001-order:p2:c0",
+            "CASE-1001-order:p2:c1",
+            "CASE-1001-order:p1:c2",
+            "CASE-1001-order:p1:c0",
+            "CASE-1001-payment:p2:c0",
+            "CASE-1001-order:p1:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1002",
+          "question": "For order ORD-24002, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1002-order",
+          "anchors": [
+            "Tax allocation | 58.81",
+            "Total for this record | 899.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1002-order:p2:c0",
+            "CASE-1002-order:p2:c1",
+            "CASE-1002-order:p1:c2",
+            "CASE-1002-approval:p2:c0",
+            "CASE-1002-refund:p2:c0",
+            "CASE-1002-payment:p2:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1003",
+          "question": "For order ORD-24003, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1003-order",
+          "anchors": [
+            "Tax allocation | 104.54",
+            "Total for this record | 1598.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1003-order:p2:c0",
+            "CASE-1003-order:p2:c1",
+            "CASE-1003-order:p1:c2",
+            "CASE-1003-approval:p2:c0",
+            "CASE-1003-refund:p2:c0",
+            "CASE-1003-payment:p2:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1004",
+          "question": "For order ORD-24004, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1004-order",
+          "anchors": [
+            "Tax allocation | 42.45",
+            "Total for this record | 649.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1004-order:p2:c0",
+            "CASE-1004-order:p2:c1",
+            "CASE-1004-order:p1:c2",
+            "CASE-1004-approval:p2:c0",
+            "CASE-1004-refund:p2:c0",
+            "CASE-1004-payment:p2:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1005",
+          "question": "For order ORD-24005, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1005-order",
+          "anchors": [
+            "Tax allocation | 78.43",
+            "Total for this record | 1199.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1005-order:p2:c0",
+            "CASE-1005-order:p2:c1",
+            "CASE-1005-order:p1:c2",
+            "CASE-1005-payment:p2:c0",
+            "CASE-1005-order:p1:c0",
+            "CASE-1005-payment:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1006",
+          "question": "For order ORD-24006, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1006-order",
+          "anchors": [
+            "Tax allocation | 65.35",
+            "Total for this record | 999.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1006-order:p2:c0",
+            "CASE-1006-order:p2:c1",
+            "CASE-1006-order:p1:c2",
+            "CASE-1006-payment:p2:c0",
+            "CASE-1006-order:p1:c0",
+            "CASE-1006-order:p1:c1"
+          ]
+        },
+        {
+          "case_id": "CASE-1007",
+          "question": "For order ORD-24007, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1007-order",
+          "anchors": [
+            "Tax allocation | 49.00",
+            "Total for this record | 749.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1007-order:p2:c0",
+            "CASE-1007-order:p2:c1",
+            "CASE-1007-order:p1:c2",
+            "CASE-1007-approval:p2:c0",
+            "CASE-1007-payment:p2:c0",
+            "CASE-1007-approval:p1:c0"
+          ]
+        },
+        {
+          "case_id": "CASE-1008",
+          "question": "For order ORD-24008, what tax allocation and control total are listed in the order confirmation financial allocation table?",
+          "source_id": "CASE-1008-order",
+          "anchors": [
+            "Tax allocation | 84.98",
+            "Total for this record | 1299.00"
+          ],
+          "recall": 1.0,
+          "retrieved": [
+            "CASE-1008-order:p2:c0",
+            "CASE-1008-order:p2:c1",
+            "CASE-1008-order:p1:c2",
+            "CASE-1008-approval:p2:c0",
+            "CASE-1008-refund:p2:c0",
+            "CASE-1008-payment:p2:c0"
+          ]
+        }
+      ]
+    }
+  },
+  "pipeline_version": "v3-explicit-cl100k-base-pdf",
+  "corpus_sha256": "dc8bc0bb440cc4345abb2384935ddf286ff04b43db329908d318273189ca3f13"
+}

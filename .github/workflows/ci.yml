@@ -1,0 +1,14 @@
+name: Source and access policy checks
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-dev.txt pytest
+      - run: python -m compileall -q app scripts
+      - run: pytest -q tests/test_banking.py tests/test_investigation.py tests/test_security.py
+      - run: python scripts/scan_publication.py

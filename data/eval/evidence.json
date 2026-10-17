@@ -1,0 +1,354 @@
+[
+  {
+    "case_id": "CASE-1001",
+    "question": "Was the returned package delivered?",
+    "evidence": [
+      {
+        "source_id": "CASE-1001-shipping",
+        "anchor": "Delivered September 9"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1001",
+    "question": "Did support say the refund was completed?",
+    "evidence": [
+      {
+        "source_id": "CASE-1001-conversation",
+        "anchor": "Your refund is completed."
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1001",
+    "question": "What is the requested return amount?",
+    "evidence": [
+      {
+        "source_id": "CASE-1001-return",
+        "anchor": "Requested device refund USD 1099.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "What is the processor refund trace reference?",
+    "evidence": [
+      {
+        "source_id": "CASE-1002-refund",
+        "anchor": "DEMO-TRACE-0002"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "Does the statement show a posted merchant refund credit?",
+    "evidence": [
+      {
+        "source_id": "CASE-1002-statement",
+        "anchor": "No matching merchant refund credit appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "What amount was approved?",
+    "evidence": [
+      {
+        "source_id": "CASE-1002-approval",
+        "anchor": "USD 899.00 approved"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "Which device inspection is missing?",
+    "evidence": [
+      {
+        "source_id": "CASE-1003-inspection",
+        "anchor": "second device has no inspection record"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "How much merchant refund credit posted?",
+    "evidence": [
+      {
+        "source_id": "CASE-1003-statement",
+        "anchor": "Merchant refund | Posted credit | 799.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "How much refund was submitted?",
+    "evidence": [
+      {
+        "source_id": "CASE-1003-refund",
+        "anchor": "USD 799.00 submitted"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "Is the merchant refund posted?",
+    "evidence": [
+      {
+        "source_id": "CASE-1004-statement",
+        "anchor": "Merchant refund | Posted credit | 649.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "What is the refund processor reference?",
+    "evidence": [
+      {
+        "source_id": "CASE-1004-refund",
+        "anchor": "DEMO-TRACE-0004"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "Was device inspection accepted?",
+    "evidence": [
+      {
+        "source_id": "CASE-1004-inspection",
+        "anchor": "Device matched and accepted"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "Does tracking prove carrier acceptance?",
+    "evidence": [
+      {
+        "source_id": "CASE-1005-shipping",
+        "anchor": "No carrier acceptance or delivery scan appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "What return label was created?",
+    "evidence": [
+      {
+        "source_id": "CASE-1005-return",
+        "anchor": "Return label SHIP-"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "Which device was ordered?",
+    "evidence": [
+      {
+        "source_id": "CASE-1005-order",
+        "anchor": "Device identifier: DEV-88005"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "Does the scanned device match the expected device?",
+    "evidence": [
+      {
+        "source_id": "CASE-1006-inspection",
+        "anchor": "Identifier mismatch"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "What is the order device identifier?",
+    "evidence": [
+      {
+        "source_id": "CASE-1006-order",
+        "anchor": "Device identifier: DEV-88006"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "Was the package delivered?",
+    "evidence": [
+      {
+        "source_id": "CASE-1006-shipping",
+        "anchor": "Delivered September 9"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "What amount was approved for refund?",
+    "evidence": [
+      {
+        "source_id": "CASE-1007-approval",
+        "anchor": "USD 749.00 approved"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "Is a matching refund posted in the statement?",
+    "evidence": [
+      {
+        "source_id": "CASE-1007-statement",
+        "anchor": "No matching merchant refund credit appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "Was the device accepted after inspection?",
+    "evidence": [
+      {
+        "source_id": "CASE-1007-inspection",
+        "anchor": "Device matched and accepted"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "Is the dispute credit provisional or a merchant refund?",
+    "evidence": [
+      {
+        "source_id": "CASE-1008-statement",
+        "anchor": "Dispute adjustment | Provisional credit | 1299.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "What trace reference accompanies the submitted refund?",
+    "evidence": [
+      {
+        "source_id": "CASE-1008-refund",
+        "anchor": "DEMO-TRACE-0008"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "What payment was captured?",
+    "evidence": [
+      {
+        "source_id": "CASE-1008-payment",
+        "anchor": "Captured purchase: USD 1299.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1001",
+    "question": "Compare the agent completion claim with the customer-provided statement.",
+    "evidence": [
+      {
+        "source_id": "CASE-1001-conversation",
+        "anchor": "Your refund is completed."
+      },
+      {
+        "source_id": "CASE-1001-statement",
+        "anchor": "No matching merchant refund credit appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "Was the money sent and is receipt visible to the customer?",
+    "evidence": [
+      {
+        "source_id": "CASE-1002-refund",
+        "anchor": "USD 899.00 submitted"
+      },
+      {
+        "source_id": "CASE-1002-statement",
+        "anchor": "No matching merchant refund credit appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "Connect the uninspected second device with the partial credit.",
+    "evidence": [
+      {
+        "source_id": "CASE-1003-inspection",
+        "anchor": "second device has no inspection record"
+      },
+      {
+        "source_id": "CASE-1003-statement",
+        "anchor": "Merchant refund | Posted credit | 799.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "Connect the outgoing refund and the incoming credit.",
+    "evidence": [
+      {
+        "source_id": "CASE-1004-refund",
+        "anchor": "USD 649.00 submitted"
+      },
+      {
+        "source_id": "CASE-1004-statement",
+        "anchor": "Merchant refund | Posted credit | 649.00"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "Does generating return paperwork establish that the carrier took possession?",
+    "evidence": [
+      {
+        "source_id": "CASE-1005-return",
+        "anchor": "Return label SHIP-"
+      },
+      {
+        "source_id": "CASE-1005-shipping",
+        "anchor": "No carrier acceptance or delivery scan appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "Compare the purchased device identifier with the scanned return.",
+    "evidence": [
+      {
+        "source_id": "CASE-1006-order",
+        "anchor": "Device identifier: DEV-88006"
+      },
+      {
+        "source_id": "CASE-1006-inspection",
+        "anchor": "Identifier mismatch"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "Does internal approval mean the customer received a credit?",
+    "evidence": [
+      {
+        "source_id": "CASE-1007-approval",
+        "anchor": "USD 749.00 approved"
+      },
+      {
+        "source_id": "CASE-1007-statement",
+        "anchor": "No matching merchant refund credit appears"
+      }
+    ]
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "Distinguish the merchant payment record from the temporary dispute adjustment.",
+    "evidence": [
+      {
+        "source_id": "CASE-1008-refund",
+        "anchor": "USD 1299.00 submitted"
+      },
+      {
+        "source_id": "CASE-1008-statement",
+        "anchor": "Dispute adjustment | Provisional credit | 1299.00"
+      }
+    ]
+  }
+]

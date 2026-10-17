@@ -1,0 +1,10 @@
+{
+  "source_pdfs": 91,
+  "synthetic_sources": 87,
+  "public_reference_paraphrases": 4,
+  "pdf_pages": 202,
+  "extracted_tokens": 62586,
+  "tokenizer": "cl100k_base",
+  "sources_over_350_tokens": 57,
+  "max_source_tokens": 2453
+}

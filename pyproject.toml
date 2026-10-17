@@ -1,0 +1,9 @@
+[project]
+name = "customer-case-intelligence"
+version = "0.2.0"
+description = "Evidence-grounded return and refund investigations with scoped financial RAG"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
