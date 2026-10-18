@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.config import runtime_dir
+from app.domain.directory import contact
 from app.security.policy import minimum_role, role_allows
 from app.storage.database import connect, remote
 
@@ -57,6 +58,7 @@ def ownership(entries, initial):
     current = initial
     acknowledged = False
     action = ""
+    person = None
     pending = None
     for entry in entries:
         if entry["event_type"] == "handoff":
@@ -68,10 +70,12 @@ def ownership(entries, initial):
         ):
             current = entry["team"]
             acknowledged = True
+            person = entry.get("individual_owner")
             action = pending["next_action"]
             pending = None
     return {
         "current_team": current,
+        "current_owner": person,
         "acknowledged": acknowledged,
         "next_action": action,
         "pending_handoff": pending,
@@ -89,6 +93,14 @@ def append(user, cid, fields, source_docs):
         raise ValueError("Describe what happened.")
     if event_type != "handoff" and fields["next_team"]:
         raise ValueError("Only a handoff selects a receiving team.")
+    requested_owner = fields.get("owner_contact_id", "")
+    person = contact(requested_owner) if requested_owner else None
+    if requested_owner and (
+        event_type != "handoff" or not person or person["team"] != fields["next_team"]
+    ):
+        raise ValueError(
+            "Choose a demo individual in the receiving team for a handoff."
+        )
     sources = {
         d["id"]: d
         for d in source_docs
@@ -142,6 +154,7 @@ def append(user, cid, fields, source_docs):
                 raise ValueError(
                     "Acknowledge the current handoff as its receiving team."
                 )
+            person = pending.get("individual_owner")
         if event_type == "correction":
             if not related or not role_allows(user.role, related["minimum_role"]):
                 raise ValueError("Select a visible entry in this case to correct.")
@@ -159,6 +172,7 @@ def append(user, cid, fields, source_docs):
             "id": "COM-" + uuid4().hex,
             "case_id": cid,
             "author": user.username,
+            "individual_owner": person,
             "author_role": user.role,
             "recorded_at": datetime.now(timezone.utc).isoformat(),
             "minimum_role": required,
@@ -185,6 +199,9 @@ def document(entry):
             f"Communication: {entry['message']}",
             f"Promised or next action: {entry['next_action'] or 'Not recorded'}",
             f"Receiving team: {entry['next_team'] or 'Not recorded'}",
+            "Requested / acknowledged demo individual: "
+            + ((entry.get("individual_owner") or {}).get("name", "Not selected")),
+            "Individual labels are demo routing; acknowledgement is recorded by the signed-in author, not verified external employee acceptance.",
             f"Deadline: {entry['due_at'] or 'Not recorded'}",
             f"Related entry: {entry['related_id'] or 'None'}",
             "Source references: "

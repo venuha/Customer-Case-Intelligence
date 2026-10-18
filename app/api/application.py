@@ -19,7 +19,7 @@ from app.storage.database import connect, private_local_file
 
 from ..config import runtime_dir
 from ..documents import uploads
-from ..domain import communications
+from ..domain import communications, directory
 from ..domain.investigation import investigate, money
 from ..rag.capacity import bounded_inference
 from ..rag.case_context import ContextIndex
@@ -172,11 +172,13 @@ def detail(cid, user):
         + [communications.document(e) for e in entries]
     )
     investigation = project_investigation(user, investigate(case, docs))
+    ownership = communications.ownership(entries, investigation["owner"])
+    docs.append(directory.document(cid, ownership))
     return {
         **case,
         "investigation": investigation,
         "documents": docs,
-        "team_ownership": communications.ownership(entries, investigation["owner"]),
+        "team_ownership": ownership,
     }
 
 
@@ -278,6 +280,7 @@ class CommunicationInput(BaseModel):
     due_at: str = Field(default="", max_length=40)
     related_id: str = Field(default="", max_length=80)
     source_ids: list[str] = Field(default_factory=list, max_length=5)
+    owner_contact_id: str = Field(default="", max_length=80)
 
 
 @app.get("/api/cases/{cid}/communications")
@@ -294,6 +297,8 @@ def communication_timeline(cid: str, user=Depends(require_user)):
         "entries": entries,
         "ownership": communications.ownership(entries, initial),
         "teams": communications.TEAMS,
+        "directory": directory.CONTACTS,
+        "directory_note": directory.NOTE,
         "historical_sources": historic,
         "note": "Shared with authorized case members according to source permissions. Append a correction instead of editing history. Calls and emails are recorded manually; no external systems are connected.",
     }
@@ -552,6 +557,8 @@ def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
         graph = build_graph(index, state["cases"], state["documents"] + own)
     shared = [communications.document(e) for e in communications.visible(user, cid)]
     visible = visible_documents(user, state["documents"], cid)
+    case_detail = detail(cid, user)
+    visible.append(directory.document(cid, case_detail["team_ownership"]))
     # Bounded recent context, explicitly disclosed to the reader.
     recent = shared[-40:]
     base = index if own else state["index"]
@@ -582,7 +589,32 @@ def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
         result["answer"]["unknowns"].append(
             "This answer includes only the latest 40 shared entries. Review the full communication timeline for earlier entries."
         )
+    proposed = (
+        directory.suggestion(
+            question, case_detail["investigation"], case_detail["team_ownership"]
+        )
+        if directory.routing_question(question) and not result.get("blocked")
+        else None
+    )
+    if proposed:
+        person = proposed["contact"]
+        directory_id = "DIR-" + cid
+        if any(e["id"] == directory_id for e in result.get("evidence", [])):
+            quote = f"{person['id']}: {person['name']} — {person['role']} — {person['team']} — {person['email']}."
+            result["answer"]["claims"].append(
+                {
+                    "text": f"Suggested fictional demo contact: {person['name']}, {person['role']} ({person['team']}). A directory suggestion is not an acknowledged case assignment.",
+                    "source_id": directory_id,
+                    "quote": quote,
+                }
+            )
+            result["answer"]["suggested_next_step"] = (
+                "A handoff is already awaiting acknowledgement; review it in Shared timeline."
+                if proposed["pending_handoff_id"]
+                else f"Review and save an internal handoff to {person['name']} in {person['team']}. No external message will be sent."
+            )
     run = {
+        "handoff_suggestion": proposed,
         "username": user.username,
         "role": user.role,
         "id": str(uuid4()),
@@ -661,6 +693,11 @@ def packet(cid: str, user=Depends(require_user)):
         text += (
             "\nAwaiting acknowledgement: " + team_state["pending_handoff"]["next_team"]
         )
+    person = team_state.get("current_owner")
+    text += "\nAcknowledged demo individual: " + (
+        person["name"] if person else "Not recorded"
+    )
+    text += "\n\n" + directory.document(cid, team_state)["text"]
     text += "\n\n## Shared communications (latest 40)\n" + "\n\n".join(
         communications.document(e)["text"] for e in entries[-40:]
     )

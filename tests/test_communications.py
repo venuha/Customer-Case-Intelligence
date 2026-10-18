@@ -239,3 +239,93 @@ def test_historical_import_is_idempotent_and_does_not_invent_contacts(
     assert not communications.ownership(entries, "Return reconciliation")[
         "acknowledged"
     ]
+
+
+def test_directory_contact_routing_is_cited_and_never_creates_handoff_implicitly(
+    communication_client,
+):
+    client, login = communication_client
+    login("alice")
+    cid = "/api/cases/CASE-1001"
+    directory = client.get(cid + "/communications").json()
+    assert all(c["email"].endswith(".example") for c in directory["directory"])
+    result = client.post(
+        cid + "/ask",
+        json={
+            "question": "Who is the warehouse person to connect with and create a handoff?"
+        },
+    ).json()
+    assert result["handoff_suggestion"]["contact"]["id"] == "DEMO-WH-01"
+    claims = [
+        c for c in result["answer"]["claims"] if c["source_id"] == "DIR-CASE-1001"
+    ]
+    assert any("Alex Morgan" in c["text"] and "fictional" in c["text"] for c in claims)
+    source = next(e for e in result["evidence"] if e["id"] == "DIR-CASE-1001")
+    assert all(c["quote"] in source["text"] for c in claims)
+    assert client.get(cid + "/communications").json()["entries"] == directory["entries"]
+    assert client.get("/api/cases/CASE-1002/communications").status_code == 404
+
+
+def test_individual_owner_is_validated_and_only_acknowledged_after_acceptance(
+    communication_client,
+):
+    client, login = communication_client
+    login("alice")
+    path = "/api/cases/CASE-1001/communications"
+    fields = entry(event_type="handoff", next_team="Return reconciliation")
+    for invalid in ["UNKNOWN", "DEMO-BK-01"]:
+        assert (
+            client.post(path, json={**fields, "owner_contact_id": invalid}).status_code
+            == 422
+        )
+    assert (
+        client.post(
+            path, json={**fields, "individual_owner": {"name": "forged"}}
+        ).status_code
+        == 422
+    )
+    response = client.post(path, json={**fields, "owner_contact_id": "DEMO-WH-01"})
+    assert response.status_code == 200
+    eid = response.json()["id"]
+    data = client.get(path).json()
+    assert data["ownership"]["current_owner"] is None
+    assert (
+        data["ownership"]["pending_handoff"]["individual_owner"]["name"]
+        == "Alex Morgan"
+    )
+    login("bob")
+    response = client.post(
+        path,
+        json=entry(
+            event_type="acceptance", team="Return reconciliation", related_id=eid
+        ),
+    )
+    assert response.status_code == 200
+    data = client.get(path).json()
+    assert data["ownership"]["current_owner"]["id"] == "DEMO-WH-01"
+    assert response.json()["author"] == "bob"
+    assert data["ownership"]["acknowledged"]
+    assert "Alex Morgan" in client.get("/api/cases/CASE-1001/packet").text
+    query = client.post(
+        "/api/cases/CASE-1001/ask", json={"question": "Who owns warehouse follow-up?"}
+    ).json()
+    assert any(
+        "Acknowledged individual owner: Alex Morgan" in e["text"]
+        for e in query["evidence"]
+        if e["kind"] == "team_directory"
+    )
+
+
+def test_missing_evidence_wording_does_not_claim_events_never_happened():
+    from app.rag.evidence_language import qualify_missing_event
+
+    text = "No warehouse acceptance, processor submission, or posted credit was created by any contact so far."
+    result = qualify_missing_event(text)
+    assert result.startswith("The available records do not establish")
+    assert "does not prove" in result
+    qualified = "Processor submission is not evidenced in the available records."
+    assert qualify_missing_event(qualified) == qualified
+    assert (
+        qualify_missing_event("A refund was submitted on September 14.")
+        == "A refund was submitted on September 14."
+    )

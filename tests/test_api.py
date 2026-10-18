@@ -144,6 +144,7 @@ def test_role_access_and_revocation(client):
             "conversation",
             "bank_status",
             "communication",
+            "team_directory",
         )
         for d in data["documents"]
     )
@@ -167,6 +168,7 @@ def test_role_access_and_revocation(client):
             "bank_status",
             "public_guidance",
             "communication",
+            "team_directory",
         )
         for e in run["evidence"]
     )

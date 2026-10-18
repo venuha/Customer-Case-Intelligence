@@ -88,7 +88,7 @@ def investigate(case, docs):
         status = "blocked"
         headline = "Refund approval is recorded; processor submission is not evidenced."
         owner = "Payments operations"
-        action = "Obtain the processor submission result or investigate why the approved refund was not submitted."
+        action = "Obtain the processor submission result or investigate the missing submission evidence."
         evidence = cite("approval")
     elif posted > 0 and posted < amount:
         status = "blocked"

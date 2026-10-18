@@ -3,6 +3,7 @@
 import re
 
 from .retrieval import tokens
+from app.domain.directory import routing_question
 
 
 def is_summary(question):
@@ -57,7 +58,20 @@ class ContextIndex:
             if d["case_id"] == cid and d["kind"] == "communication"
         ]
         comms.sort(key=lambda d: len(words & set(tokens(d["text"]))), reverse=True)
-        return hits + [evidence(d) for d in comms[:8] if words & set(tokens(d["text"]))]
+        routing = (
+            [
+                evidence(d)
+                for d in self.documents
+                if d["kind"] == "team_directory" and d["case_id"] == cid
+            ]
+            if routing_question(question)
+            else []
+        )
+        return (
+            routing
+            + hits
+            + [evidence(d) for d in comms[:8] if words & set(tokens(d["text"]))]
+        )
 
 
 def complete_brief(answer, evidence_items):
