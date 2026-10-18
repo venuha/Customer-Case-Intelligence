@@ -124,9 +124,9 @@ def extract_page(page):
 
 
 def remove_cached_indexes(did):
-    from ..config import data_dir
+    from ..config import index_dir
 
-    for path in (data_dir() / "index").glob("*.chunks.json"):
+    for path in index_dir().glob("*.chunks.json"):
         try:
             chunks = json.loads(path.read_text())
         except (ValueError, OSError):

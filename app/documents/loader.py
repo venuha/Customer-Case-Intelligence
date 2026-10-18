@@ -3,7 +3,7 @@
 import hashlib, json
 import pymupdf as fitz
 from langchain_core.documents import Document
-from ..config import ROOT, data_dir
+from ..config import ROOT, data_dir, index_dir
 
 
 def pdf_pages(record):
@@ -11,7 +11,7 @@ def pdf_pages(record):
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     if digest != record["sha256"]:
         raise ValueError("Source PDF hash mismatch: " + record["id"])
-    cache = data_dir() / "index" / "extracted"
+    cache = index_dir() / "extracted"
     cache.mkdir(parents=True, exist_ok=True)
     cached = cache / (digest + ".json")
     if cached.exists():

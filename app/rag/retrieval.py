@@ -14,6 +14,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from rank_bm25 import BM25Okapi
 from ..security.policy import minimum_role, role_allows
+from ..config import index_dir
 
 ROOT = Path(__file__).resolve().parents[2]
 os.environ.setdefault("HF_HOME", str(ROOT / "work" / "huggingface"))
@@ -136,7 +137,9 @@ def get_reranker():
     from fastembed.rerank.cross_encoder import TextCrossEncoder
 
     return TextCrossEncoder(
-        RERANK_MODEL, cache_dir=str(ROOT / "work/models"), threads=2
+        RERANK_MODEL,
+        cache_dir=str(ROOT / os.getenv("EMBEDDING_CACHE", "work/models")),
+        threads=2,
     )
 
 
@@ -155,7 +158,7 @@ class HybridIndex:
         self.strategy = strategy
         self.embeddings = embeddings or LocalEmbeddings()
         source_docs = documents if documents is not None else CorpusLoader().load()
-        folder = ROOT / "data" / "index"
+        folder = index_dir()
         folder.mkdir(parents=True, exist_ok=True)
         segmentation_key = hashlib.sha256(
             (
@@ -191,7 +194,7 @@ class HybridIndex:
         fingerprint = hashlib.sha256(
             ("bge-small-en-v1.5-v1" + payload).encode()
         ).hexdigest()[:20]
-        folder = ROOT / "data" / "index"
+        folder = index_dir()
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"{fingerprint}.npy"
         if path.exists():

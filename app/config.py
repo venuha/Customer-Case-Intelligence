@@ -20,3 +20,9 @@ def runtime_dir():
     path.mkdir(parents=True, exist_ok=True)
     path.chmod(0o700)
     return path
+
+
+def index_dir():
+    path = Path(os.getenv("CCI_INDEX_DIR", str(data_dir() / "index")))
+    path.mkdir(parents=True, exist_ok=True)
+    return path

@@ -10,5 +10,5 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt pytest
       - run: python -m compileall -q app scripts
-      - run: pytest -q tests/test_banking.py tests/test_investigation.py tests/test_security.py tests/test_pinecone.py tests/test_ragas_runner.py
+      - run: pytest -q tests/test_banking.py tests/test_investigation.py tests/test_security.py tests/test_pinecone.py tests/test_ragas_runner.py tests/test_deployment.py
       - run: python scripts/scan_publication.py

@@ -1,7 +1,20 @@
-.venv
-.env
-.git
-work
-__pycache__
-.pytest_cache
-data/index
+# Only the files used by Docker COPY belong in the build context.
+**
+!Dockerfile
+!.dockerignore
+!requirements.txt
+!requirements.lock
+!app/
+!app/**
+!data/
+!data/**
+!scripts/
+!scripts/**
+**/__pycache__/
+**/*.pyc
+data/index/
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*.sqlite*

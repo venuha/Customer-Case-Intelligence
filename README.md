@@ -117,3 +117,7 @@ The RAGAS runner supports `--workers 1..4` (default four concurrent questions, w
 The full Pinecone-backed run completed all **128 question/configuration rows** (32 questions, four configurations) using OpenAI `gpt-4.1-mini` for separate generation and RAGAS judging calls. All three metrics are valid in every row, and every retrieved hit records Pinecone as its backend. See `docs/evaluation-ragas.md` and `.json` for the measured values, paired reranking deltas, generated responses, source/chunk IDs and provenance hashes.
 
 The findings are mixed: reranking improved fixed-chunk context precision and semantic context recall, while answer faithfulness declined in both paired comparisons. The app keeps fixed-size hybrid retrieval as its default and exposes deeper reranking as an option. This synthetic development benchmark does not establish production accuracy; the combined PDF report explains the limits and flags low-faithfulness examples for review.
+
+## Hosted deployment
+
+The Render Blueprint provisions a public HTTPS application with a persistent disk and a private first administrator. Follow [the deployment guide](docs/deployment.md) for server-side secrets, first login, storage paths and the single-process limitation. Local accounts and private `.env` files are excluded from the Docker image. Review the selected hosting price before creating the service.

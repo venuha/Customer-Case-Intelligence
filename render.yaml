@@ -2,11 +2,38 @@ services:
   - type: web
     name: customer-case-intelligence
     runtime: docker
+    plan: 1c-2g
+    region: virginia
+    numInstances: 1
+    autoDeployTrigger: checksPass
+    renderSubdomainPolicy: enabled
     healthCheckPath: /health
+    disk:
+      name: case-intelligence-storage
+      mountPath: /app/work
+      sizeGB: 5
     envVars:
-      - key: OPENAI_API_KEY
-        sync: false
       - key: COOKIE_SECURE
         value: "true"
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: CCI_RUNTIME_DIR
+        value: /app/work/state
+      - key: CCI_INDEX_DIR
+        value: /app/work/index
+      - key: EMBEDDING_CACHE
+        value: /app/work/models
+      - key: VECTOR_BACKEND
+        value: pinecone
+      - key: PINECONE_INDEX_NAME
+        value: customer-case-intelligence
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+      - key: CCI_BOOTSTRAP_USERNAME
+        value: owner
+      - key: CCI_BOOTSTRAP_PASSWORD
+        sync: false
