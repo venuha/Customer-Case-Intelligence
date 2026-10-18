@@ -35,9 +35,18 @@ def test_invalid_generated_quote_is_removed(monkeypatch):
     cases = {c["id"]: c for c in json.loads((ROOT / "data/cases.json").read_text())}
     docs = json.loads((ROOT / "data/documents.json").read_text())
     graph = build_graph(HybridIndex(), cases, docs)
-    run = graph.invoke(
-        {"case_id": "CASE-1001", "question": "Was the refund posted in the statement?"}
-    )
+    from app.security.provider_keys import bind_key, reset_key
+
+    handle = bind_key("mock-personal-key")
+    try:
+        run = graph.invoke(
+            {
+                "case_id": "CASE-1001",
+                "question": "Was the refund posted in the statement?",
+            }
+        )
+    finally:
+        reset_key(handle)
     assert not run["answer"]["claims"]
     assert "removed" in run["answer"]["unknowns"][0]
 
@@ -79,3 +88,25 @@ def test_personal_key_reaches_real_graph_without_state_leak(monkeypatch):
     assert seen == ["mock-personal-value"]
     assert run["mode"] == "openai"
     assert "mock-personal-value" not in json.dumps(run)
+
+
+def test_server_environment_key_cannot_fund_application_answers(monkeypatch):
+    import app.rag.graph as mod
+    from app.security import provider_keys
+
+    monkeypatch.setenv("OPENAI_API_KEY", "owner-key-must-never-be-used")
+
+    def forbidden_model(**kwargs):
+        raise AssertionError(
+            "No provider call is permitted without a personal session key"
+        )
+
+    monkeypatch.setattr(mod, "ChatOpenAI", forbidden_model)
+    assert provider_keys.effective_key() is None
+    cases = {c["id"]: c for c in json.loads((ROOT / "data/cases.json").read_text())}
+    docs = json.loads((ROOT / "data/documents.json").read_text())
+    run = build_graph(HybridIndex(backend="local"), cases, docs).invoke(
+        {"case_id": "CASE-1001", "question": "Was the refund posted?"}
+    )
+    assert run["mode"] == "evidence"
+    assert "owner-key-must-never-be-used" not in json.dumps(run)

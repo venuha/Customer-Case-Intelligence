@@ -1,7 +1,6 @@
 """Process-local, session-bound provider credentials. Never serialize these values."""
 
 import hashlib
-import os
 import threading
 import time
 from contextvars import ContextVar
@@ -53,7 +52,8 @@ def forget_key(token):
 
 
 def effective_key():
-    return _current.get() or os.getenv("OPENAI_API_KEY")
+    # Public application requests may only use the requesting session credential.
+    return _current.get()
 
 
 def bind_key(key):

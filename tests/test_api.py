@@ -411,3 +411,12 @@ def test_private_pdf_upload_chunks_retrieval_and_owner_isolation(client):
         client.post("/api/cases/CASE-1001/uploads", content=b"not a pdf").status_code
         == 422
     )
+
+
+def test_config_ignores_owner_environment_key(client, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "owner-env-value-must-stay-private")
+    response = client.get("/api/config")
+    assert response.status_code == 200
+    assert response.json()["ai_key_policy"] == "personal_session_only"
+    assert response.json()["ai_configured"] is False
+    assert "owner-env-value-must-stay-private" not in response.text

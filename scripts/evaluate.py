@@ -250,6 +250,7 @@ def main():
                 "Set OPENAI_API_KEY in .env before requesting generation/judge evaluation."
             )
         from app.rag.graph import build_graph
+        from app.security.provider_keys import bind_key, reset_key
         from langchain_openai import ChatOpenAI
         from pydantic import BaseModel, Field
 
@@ -269,7 +270,12 @@ def main():
         ).with_structured_output(Grade)
         grades = []
         for cid, q, _ in QUESTIONS:
-            answer = graph.invoke({"case_id": cid, "question": q})
+            # Offline evaluation is an explicit administrator operation, never a web request.
+            credential = bind_key(os.environ["OPENAI_API_KEY"])
+            try:
+                answer = graph.invoke({"case_id": cid, "question": q})
+            finally:
+                reset_key(credential)
             if answer.get("mode") != "openai":
                 grades.append(
                     {

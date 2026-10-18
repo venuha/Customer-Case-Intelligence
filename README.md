@@ -114,7 +114,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Generated demo passwords are stored privately in `work/demo-access.json` (file mode 600). Open that local file to sign in; do not upload it. There are no published default passwords. The service account sees four assigned cases; supervisor and head accounts see all eight with different document permissions. For individual accounts use `python scripts/manage_users.py create --username NAME --role customer_service --cases CASE-1001` and enter a password at the prompt.
 
-Optionally set `OPENAI_API_KEY` in the private `.env`; otherwise answers are clearly labeled retrieved excerpts. First startup downloads local embedding and reranker models and builds the PDF index. Use HTTPS and `COOKIE_SECURE=true` for hosted sessions; create users in the deployed runtime with persistent private storage. Docker and render.yaml are starting configurations, not evidence of a completed deployment.
+Web AI answers require each signed-in user to connect their own OpenAI key for that session. The app ignores any server `OPENAI_API_KEY` for web requests; without a personal key, answers are clearly labeled retrieved excerpts. The `.env` OpenAI key is reserved for explicitly invoked offline evaluation scripts. First startup downloads local embedding and reranker models and builds the PDF index. Use HTTPS and `COOKIE_SECURE=true` for hosted sessions; create users in the deployed runtime with persistent private storage. Docker and render.yaml are starting configurations, not evidence of a completed deployment.
 
 ## Repository map
 - `app/api/`: authenticated HTTP routes and application lifecycle.
@@ -244,3 +244,8 @@ Open a case and select **Simulation lab → Start fictional return journey**. Ea
 Optional device-mismatch and bank-information-request branches block later steps until resolved. Events keep their original history, signed-in author and timestamps. **Explain this simulation with citations** produces a deterministic, rule-based event brief; it is labeled separately from OpenAI answers. Citations open the private simulation record. Completed runs can be replayed by creating a new run, preserving previous evidence.
 
 The simulator contains no banking credentials, external bank/warehouse calls, payment processing, email, or external tickets. All people, identifiers, trace references, and money states are fictional. Original case evidence, financial balances, shared communications, retrieval indexes, and RAGAS comparison results remain unchanged. There is no automatic execution by the case assistant. Server-side case assignment, run ownership, ordered transitions, revision checks and per-run locking protect against cross-user access, skipped steps and duplicate clicks. Limits: 20 runs per user/case, 100 events per run. Postgres stores hosted simulations; SQLite is used locally. No Plaid integration is used by this lab.
+
+
+## Personal OpenAI keys only
+
+Public web requests never use an owner or infrastructure OpenAI key. Connect your own key in **Case assistant → Connect your OpenAI key** for paid AI generation. The key stays in server process memory for that authenticated session, is not returned in API responses or saved to the database, and is removed on sign-out, expiry or restart. Without a personal key, local evidence retrieval, document inspection and the simulation lab still work. Pinecone and Supabase infrastructure credentials remain server-side; they are not visitor AI credentials.

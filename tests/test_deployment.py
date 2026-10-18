@@ -69,8 +69,9 @@ def test_container_launcher_uses_platform_port_single_worker(tmp_path, monkeypat
 def test_blueprint_keeps_secrets_out_of_source_and_state_on_disk():
     service = yaml.safe_load((ROOT / "render.yaml").read_text())["services"][0]
     settings = {item["key"]: item for item in service["envVars"]}
-    for key in ("PINECONE_API_KEY", "OPENAI_API_KEY", "CCI_BOOTSTRAP_PASSWORD"):
+    for key in ("PINECONE_API_KEY", "CCI_BOOTSTRAP_PASSWORD"):
         assert settings[key] == {"key": key, "sync": False}
+    assert "OPENAI_API_KEY" not in settings
     assert service["plan"] == "free" and "disk" not in service
     assert settings["REQUIRE_DURABLE_STORAGE"]["value"] == "true"
     for key in ("DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"):

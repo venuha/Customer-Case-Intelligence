@@ -256,8 +256,8 @@ def config(request: Request, user=Depends(require_user)):
     return {
         "ai_configured": bool(
             provider_keys.personal_key(request.cookies.get(SESSION_COOKIE, ""))
-            or os.getenv("OPENAI_API_KEY")
         ),
+        "ai_key_policy": "personal_session_only",
         "personal_key_connected": bool(
             provider_keys.personal_key(request.cookies.get(SESSION_COOKIE, ""))
         ),
