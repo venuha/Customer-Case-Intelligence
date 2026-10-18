@@ -19,9 +19,11 @@ from app.storage.database import connect, private_local_file
 
 from ..config import runtime_dir
 from ..documents import uploads
+from ..domain import communications
 from ..domain.investigation import investigate, money
-from ..rag.graph import build_graph
 from ..rag.capacity import bounded_inference
+from ..rag.case_context import ContextIndex
+from ..rag.graph import build_graph
 from ..rag.retrieval import RERANK_MODEL, CorpusLoader, HybridIndex, chunks_for
 from ..security import provider_keys
 from ..security.auth import (
@@ -48,6 +50,8 @@ guard = threading.Lock()
 @asynccontextmanager
 async def lifespan(app):
     initialize()
+    communications.initialize()
+    communications.seed_history()
     data = ROOT / os.getenv("DATA_DIR", "data")
     cases = json.loads((data / "cases.json").read_text())
     docs = json.loads((data / "documents.json").read_text())
@@ -161,11 +165,18 @@ def authorize(cid, user):
 def detail(cid, user):
     authorize(cid, user)
     case = get_case(cid)
-    docs = visible_documents(user, state["documents"], cid) + uploads.records(user, cid)
+    entries = communications.visible(user, cid)
+    docs = (
+        visible_documents(user, state["documents"], cid)
+        + uploads.records(user, cid)
+        + [communications.document(e) for e in entries]
+    )
+    investigation = project_investigation(user, investigate(case, docs))
     return {
         **case,
-        "investigation": project_investigation(user, investigate(case, docs)),
+        "investigation": investigation,
         "documents": docs,
+        "team_ownership": communications.ownership(entries, investigation["owner"]),
     }
 
 
@@ -250,6 +261,62 @@ def connect_key(request: Request, body: PersonalKey, user=Depends(require_user))
 def disconnect_key(request: Request, user=Depends(require_user)):
     provider_keys.forget_key(request.cookies.get(SESSION_COOKIE, ""))
     return {"connected": False}
+
+
+class CommunicationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_type: Literal[
+        "contact", "promise", "handoff", "acceptance", "update", "correction"
+    ]
+    team: str = Field(max_length=80)
+    channel: Literal["Phone", "Email", "Store visit", "Internal note", "Chat"] = (
+        "Internal note"
+    )
+    message: str = Field(min_length=3, max_length=1200)
+    next_action: str = Field(default="", max_length=400)
+    next_team: str = Field(default="", max_length=80)
+    due_at: str = Field(default="", max_length=40)
+    related_id: str = Field(default="", max_length=80)
+    source_ids: list[str] = Field(default_factory=list, max_length=5)
+
+
+@app.get("/api/cases/{cid}/communications")
+def communication_timeline(cid: str, user=Depends(require_user)):
+    authorize(cid, user)
+    entries = communications.visible(user, cid)
+    initial = detail(cid, user)["investigation"]["owner"]
+    historic = [
+        d
+        for d in visible_documents(user, state["documents"], cid)
+        if d["kind"] in ("conversation", "routing")
+    ]
+    return {
+        "entries": entries,
+        "ownership": communications.ownership(entries, initial),
+        "teams": communications.TEAMS,
+        "historical_sources": historic,
+        "note": "Shared with authorized case members according to source permissions. Append a correction instead of editing history. Calls and emails are recorded manually; no external systems are connected.",
+    }
+
+
+@app.post("/api/cases/{cid}/communications")
+def record_communication(
+    cid: str, body: CommunicationInput, user=Depends(require_user)
+):
+    authorize(cid, user)
+    try:
+        return communications.append(user, cid, body.model_dump(), state["documents"])
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+
+
+@app.get("/api/cases/{cid}/communications/{eid}")
+def communication_source(cid: str, eid: str, user=Depends(require_user)):
+    authorize(cid, user)
+    entry = next((e for e in communications.visible(user, cid) if e["id"] == eid), None)
+    if not entry:
+        raise HTTPException(404, "Communication not found")
+    return communications.document(entry)
 
 
 @app.post("/api/cases/{cid}/uploads")
@@ -423,7 +490,11 @@ def logout(request: Request, user=Depends(require_user)):
 @app.get("/api/cases/{cid}/documents/{did}/pdf")
 def source_pdf(cid: str, did: str, user=Depends(require_user)):
     authorize(cid, user)
-    docs = visible_documents(user, state["documents"], cid) + uploads.records(user, cid)
+    docs = (
+        visible_documents(user, state["documents"], cid)
+        + uploads.records(user, cid)
+        + [communications.document(e) for e in communications.visible(user, cid)]
+    )
     if not any(d["id"] == did for d in docs):
         raise HTTPException(404, "Document not found")
     if did.startswith("UPLOAD-"):
@@ -479,6 +550,16 @@ def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
             documents=docs, embeddings=state["index"].embeddings, strategy="fixed"
         )
         graph = build_graph(index, state["cases"], state["documents"] + own)
+    shared = [communications.document(e) for e in communications.visible(user, cid)]
+    visible = visible_documents(user, state["documents"], cid)
+    # Bounded recent context, explicitly disclosed to the reader.
+    recent = shared[-40:]
+    base = index if own else state["index"]
+    graph = build_graph(
+        ContextIndex(base, visible + own + recent),
+        state["cases"],
+        visible + own + recent,
+    )
     bound = provider_keys.bind_key(
         provider_keys.personal_key(request.cookies.get(SESSION_COOKIE, ""))
     )
@@ -497,6 +578,10 @@ def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
             )
     finally:
         provider_keys.reset_key(bound)
+    if len(shared) > 40:
+        result["answer"]["unknowns"].append(
+            "This answer includes only the latest 40 shared entries. Review the full communication timeline for earlier entries."
+        )
     run = {
         "username": user.username,
         "role": user.role,
@@ -569,6 +654,16 @@ def packet(cid: str, user=Depends(require_user)):
             + bank["next_owner"]
             + "\n"
         )
+    entries = communications.visible(user, cid)
+    team_state = communications.ownership(entries, i["owner"])
+    text += "\n\n## Recorded team ownership\n" + team_state["current_team"]
+    if team_state["pending_handoff"]:
+        text += (
+            "\nAwaiting acknowledgement: " + team_state["pending_handoff"]["next_team"]
+        )
+    text += "\n\n## Shared communications (latest 40)\n" + "\n\n".join(
+        communications.document(e)["text"] for e in entries[-40:]
+    )
     return Response(
         text,
         media_type="text/markdown",

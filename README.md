@@ -127,3 +127,11 @@ The findings are mixed: reranking improved fixed-chunk context precision and sem
 ## Hosted deployment
 
 The Render Free Blueprint uses Supabase for durable accounts and private PDFs, with a private first administrator and a public HTTPS application URL. Follow [the deployment guide](docs/deployment.md) for server-side secrets, first login, storage paths and the single-process limitation. Local accounts and private `.env` files are excluded from the Docker image. Choose only the Free plans; no payment details are required for this setup. Free services can sleep or pause.
+
+## Shared communication timeline
+
+Each case now includes a Shared timeline for customer contacts, promises/deadlines, progress updates, corrections and team handoffs. Author identity and recording time come from the server; source permissions control who can read an entry. A requested handoff remains pending until explicitly acknowledged. The case overview shows suggested or acknowledged ownership separately. Team labels are employee-reported internal app labels, not verified membership in external organizations.
+
+The “Brief me on this case” action combines the permitted case milestones with up to the latest 40 shared entries. Citations open the underlying communication or PDF. Extractive milestone coverage supplements the generated summary so purchases and returns are not lost to a similarity-only top-k selection. Financial balances remain determined by verified source facts, never by a promise or support statement. Private PDF uploads cannot be attached as shared references.
+
+History is append-only through the API; corrections retain the original entry. Three explicitly fictional dated statements from CASE-1001's supplied conversation PDF are imported idempotently, with unknown employee identity/contact time disclosed. This does not fabricate the other contacts counted in the case header. Calls, emails, external tickets and bank systems are not captured automatically; staff must record communications in the application. Shared entries are persistent Postgres records on hosting and never uploaded to Pinecone. Existing retrieval/RAGAS reports remain the original fixed-corpus benchmark; they do not measure this new dynamic briefing feature.

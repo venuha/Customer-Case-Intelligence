@@ -9,6 +9,7 @@ ROLE_LABELS = {
     "head": "Head of operations",
 }
 KIND_ROLES = {
+    "communication": "customer_service",
     "user_upload": "customer_service",
     "order": "customer_service",
     "payment": "supervisor",

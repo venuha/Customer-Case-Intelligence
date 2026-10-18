@@ -136,7 +136,15 @@ def test_role_access_and_revocation(client):
     assert client.get("/api/cases").status_code == 200
     data = client.get("/api/cases/CASE-1001").json()
     assert all(
-        d["kind"] in ("order", "return", "shipping", "conversation", "bank_status")
+        d["kind"]
+        in (
+            "order",
+            "return",
+            "shipping",
+            "conversation",
+            "bank_status",
+            "communication",
+        )
         for d in data["documents"]
     )
     assert data["investigation"]["approved_cents"] is None
@@ -158,6 +166,7 @@ def test_role_access_and_revocation(client):
             "conversation",
             "bank_status",
             "public_guidance",
+            "communication",
         )
         for e in run["evidence"]
     )
