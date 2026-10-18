@@ -15,10 +15,14 @@ def main():
     args = parser.parse_args()
     retrieval = json.loads((ROOT / "docs/evaluation-pdf.json").read_text())
     ragas = json.loads((ROOT / "docs/evaluation-ragas.json").read_text())
+    validation_path = ROOT / "docs/pinecone-validation.json"
+    validation = (
+        json.loads(validation_path.read_text()) if validation_path.exists() else {}
+    )
     cloud_state = (
-        "Live Pinecone-backed evaluation is complete. "
-        if ragas.get("backend") == "pinecone" and ragas.get("status") == "complete"
-        else "Live Pinecone synchronization and evaluation are not yet fully verified. "
+        "Live Pinecone synchronization, all 24 case/role checks and a controlled local-fallback test passed. "
+        if validation.get("passed")
+        else "Live Pinecone synchronization and access checks are not yet fully verified. "
     )
     lines = [
         "# Financial document intelligence: chunking and reranking",
@@ -29,7 +33,7 @@ def main():
         "",
         "# Submission status",
         "",
-        "Measured local retrieval comparisons are complete. Pinecone integration is implemented and tested with mocks. "
+        "Measured local retrieval comparisons are complete. "
         + cloud_state
         + "RAGAS execution status: "
         + ragas["status"]
@@ -38,7 +42,7 @@ def main():
             "reason", "See the RAGAS companion report for detailed completion counts."
         ),
         "",
-        "This document does not claim completed live RAGAS evaluation or measured Pinecone performance unless those companion artifacts record successful runs. A final demo recording and hosting deployment remain separate deliverables.",
+        "This report separates measured local/cloud retrieval results from RAGAS answer-quality judgments. A final demo recording and hosting deployment remain separate deliverables.",
         "",
         "# Required framework",
         "",
@@ -64,6 +68,34 @@ def main():
         lines.append(
             f"| {name} | {r['chunks']} | {r['recall_at_6']:.3f} | {r['precision_at_6']:.3f} | {r['mrr_at_6']:.3f} | {r['median_ms']:.1f} |"
         )
+    pinecone_report_path = ROOT / "docs/evaluation-pinecone.json"
+    if pinecone_report_path.exists():
+        cloud_report = json.loads(pinecone_report_path.read_text())
+        lines += [
+            "",
+            "# Pinecone retrieval comparison",
+            "",
+            "The same frozen 32 questions were evaluated with strict Pinecone dense search plus local BM25. No local dense fallback is allowed in this experiment; these are retrieval measurements, separate from RAGAS generation/judge scores.",
+            "",
+            "| Configuration | Chunks | Recall@6 | Precision@6 | MRR@6 | Median ms |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+        for name, result in cloud_report["results"].items():
+            lines.append(
+                f"| {name} | {result['chunks']} | {result['recall_at_6']:.3f} | {result['precision_at_6']:.3f} | {result['mrr_at_6']:.3f} | {result['median_ms']:.1f} |"
+            )
+        lines.append("")
+        for prefix in ("fixed", "semantic"):
+            delta = cloud_report[prefix + "_reranking_delta"]
+            lines.append(
+                f"Pinecone {prefix} reranking: evidence recall {delta['recall_at_6'] * 100:+.2f} percentage points; MRR {delta['mrr_at_6']:+.3f}."
+            )
+            lines.append("")
+        lines += [
+            "",
+            "Cloud and earlier local timings were measured at different times under different loads; they do not establish an isolated backend speed comparison. Per-query cloud backend labels and corpus hashes are in evaluation-pinecone.json.",
+            "",
+        ]
     lines += [
         "",
         "# Reranking impact",
@@ -94,9 +126,9 @@ def main():
         "",
         "RAGAS 0.3.9 evaluates Faithfulness, LLMContextPrecisionWithReference and LLMContextRecall. Generation and judging use separately invoked OpenAI models recorded in the JSON artifact. RAGAS metrics are model judgments and are not interchangeable with exact-span recall/precision. Telemetry and tracing are disabled for this command.",
         "",
-        "Current status: "
-        + ragas["status"]
-        + ". No successful judge scores are available unless recorded below and in evaluation-ragas.json. Missing, failed or non-finite metrics remain unmeasured, never fabricated zeros.",
+        "Faithfulness grades the complete rendered response, including factual claims, unknowns and the suggested next step. Reference-guided context precision measures rank-weighted usefulness, while context recall attributes reference-answer claims to retrieved passages. Recommendations can therefore affect faithfulness even when every retained claim has an exact source quote; quote matching is not a semantic-grounding guarantee.",
+        "",
+        f"Generation model: {ragas['generation_model']}; judge model: {ragas['judge_model']}; temperature 0 for both. Current status: {ragas['status']}. The table records measured judge outputs when available; missing, failed or non-finite metrics remain unmeasured, never fabricated zeros.",
         "",
     ]
     # Include the current metric table and paired deltas verbatim from our own runner.
@@ -113,7 +145,7 @@ def main():
         "",
         "2. Create the compatible Pinecone index, then run scripts/sync_pinecone.py. Confirm every strategy namespace is fully visible. Restart the application after environment changes.",
         "",
-        "3. Install requirements-eval.txt (or the exact requirements-eval.lock snapshot). Run scripts/evaluate_ragas.py --preflight, then scripts/evaluate_ragas.py --backend pinecone. For a controlled local experiment use --backend local. The full comparison uses 128 generated answers plus multiple judge calls and incurs provider charges.",
+        "3. Install requirements-eval.txt (or the exact requirements-eval.lock snapshot). Run scripts/evaluate_ragas.py --preflight, then scripts/evaluate_ragas.py --backend pinecone. For a controlled local experiment use --backend local. The full comparison evaluates 128 answers plus multiple judge calls and incurs provider charges; failed attempts and retries can add calls.",
         "",
         "4. Run scripts/build_comparison_report.py --pdf after live evaluations to refresh this document. Run scripts/scan_publication.py and scripts/package_submission.py before sharing; record the application demo separately.",
         "",
@@ -123,7 +155,7 @@ def main():
         "- The 32 questions are a development benchmark, not an independent held-out test. Reference annotations may miss valid supporting paraphrases.",
         "- Existing retrieval timing measurements exclude downloads, embedding/index construction and OpenAI generation; concurrent local workloads limit timing precision.",
         "- A cross-encoder can only reorder retrieved candidates. It cannot recover a passage outside the candidate set or prove a real-world event occurred.",
-        "- Same-family generation/judge models can share biases. RAGAS results require human review, especially for claims about missing credits or provisional adjustments.",
+        "- Same-family generation/judge models can share biases. This is a single-pass evaluation with stochastic model outputs, not a confidence-interval estimate. RAGAS results require human review, especially for claims about missing credits or provisional adjustments.",
         "- No live bank transfer, refund, dispute submission, external ticket or customer message is executed. The optional bank sandbox adapter is not a verified live institution connection.",
         "",
         "# Implementation provenance",
@@ -135,6 +167,59 @@ def main():
         "Detailed provenance and per-query retrieval failures are in docs/evaluation-pdf.json and .md. Per-query RAGAS scores, completion state, model names and corpus/reference/prompt hashes are in docs/evaluation-ragas.json. No key or private customer record belongs in these artifacts.",
         "",
     ]
+    if ragas.get("status") == "complete":
+        import statistics
+
+        metrics = ("faithfulness", "context_precision", "context_recall")
+        means = {
+            name: {
+                metric: statistics.mean(row[metric] for row in rows)
+                for metric in metrics
+            }
+            for name, rows in ragas["results"].items()
+        }
+        deltas = [
+            means[prefix + "_cross_encoder"][metric] - means[prefix][metric]
+            for prefix in ("fixed", "semantic")
+            for metric in metrics
+        ]
+        improved = sum(d > 1e-9 for d in deltas)
+        declined = sum(d < -1e-9 for d in deltas)
+        interpretation = [
+            "",
+            "# Interpretation of the measured RAGAS results",
+            "",
+            f"Across the six paired RAGAS comparisons, reranking improved {improved} metric averages, reduced {declined}, and left {6 - improved - declined} unchanged. Retrieval improvements do not guarantee more faithful generated answers; the score table must be read alongside latency and individual failures.",
+            "",
+            "The application retains fixed-size hybrid retrieval by default and optional deeper reranking. These development-set measurements support reviewing the trade-off rather than declaring semantic chunking or reranking universally superior. A held-out real-document study and repeated judge runs are needed before a production choice.",
+            "",
+            "## Lowest-faithfulness examples for review",
+            "",
+        ]
+        examples = sorted(
+            [
+                (row["faithfulness"], name, row)
+                for name, rows in ragas["results"].items()
+                for row in rows
+            ],
+            key=lambda item: (
+                item[0],
+                item[1],
+                item[2]["case_id"],
+                item[2]["question"],
+            ),
+        )
+        for score, name, row in examples[:4]:
+            interpretation.append(
+                f"- {name}, {row['case_id']}: {row['question']} Faithfulness {score:.3f}. Review the full response, unknowns, recommendation and retrieved source IDs in the JSON artifact; this is a judge flag, not proof that every factual claim is false."
+            )
+        interpretation += [
+            "",
+            f"All 128 rows have valid values for all three metrics. Requested retrieval backend: {ragas['backend']}; actual per-hit backend labels are retained in the JSON artifact. Checkpoint retries retained successful rows; failed attempts are excluded from score averages and can add provider usage.",
+            "",
+        ]
+        place = lines.index("# Reproduce and complete")
+        lines[place:place] = interpretation
     text = "\n".join(lines)
     (ROOT / "docs/comparison-report.md").write_text(text)
     if args.pdf:

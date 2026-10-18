@@ -120,7 +120,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--judge", action="store_true")
     parser.add_argument("--output-prefix", default="evaluation-expanded")
+    parser.add_argument("--backend", choices=("local", "pinecone"), default="local")
     args = parser.parse_args()
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env")
     emb = LocalEmbeddings()
     docs = CorpusLoader().load()
     results = {}
@@ -137,7 +141,12 @@ def main():
     ]:
         print("Evaluating " + name, flush=True)
         if strategy not in indexes:
-            indexes[strategy] = HybridIndex(docs, emb, strategy)
+            indexes[strategy] = HybridIndex(
+                docs,
+                emb,
+                strategy,
+                backend="pinecone-strict" if args.backend == "pinecone" else "local",
+            )
         index = indexes[strategy]
         rows = []
         for n, (cid, q, gold) in enumerate(QUESTIONS):
@@ -177,6 +186,7 @@ def main():
                                 "score",
                                 "fusion_score",
                                 "reranker",
+                                "retrieval_backend",
                             )
                         }
                         for h in hits
@@ -210,6 +220,7 @@ def main():
         "annotations_sha256": hashlib.sha256(
             json.dumps(annotations, sort_keys=True).encode()
         ).hexdigest(),
+        "backend": args.backend,
         "reranker": RERANK_MODEL,
         "reranker_input": "Document title + source label + case scope + passage text; same source context in all reranked conditions",
         "protocol": "Explicit cl100k_base tokenizer. 350-token recursive baseline (40 overlap); semantic 70th-percentile adjacent embedding distance, same 350-token cap; BGE embeddings + BM25 RRF top-20 shortlist in every condition; return six chunks; no parent-document promotion during evaluation.",

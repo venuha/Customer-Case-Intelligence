@@ -1,0 +1,150 @@
+{
+  "date_utc": "2026-10-18T01:45:14.930278+00:00",
+  "dimension": 384,
+  "metric": "cosine",
+  "namespaces": {
+    "cci-fixed-a7c9a9c7b5126ea45a36": 274,
+    "cci-structure-2039f98de9d4b6f85e1e": 342,
+    "cci-semantic-103130a102a5590e007a": 989
+  },
+  "case_role_checks": [
+    {
+      "case_id": "CASE-1001",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1001",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1001",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1002",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1002",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1002",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1003",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1003",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1003",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1004",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1004",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1004",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1005",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1005",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1005",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1006",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1006",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1006",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1007",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1007",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1007",
+      "role": "head",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1008",
+      "role": "customer_service",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1008",
+      "role": "supervisor",
+      "passed": true
+    },
+    {
+      "case_id": "CASE-1008",
+      "role": "head",
+      "passed": true
+    }
+  ],
+  "controlled_failure_fallback_passed": true,
+  "private_uploads": "Not synchronized; owner-local policy tested separately",
+  "passed": true,
+  "application_config": {
+    "vector_backend": "pinecone",
+    "private_upload_backend": "local",
+    "ai_configured": true,
+    "embedding": "BAAI/bge-small-en-v1.5"
+  },
+  "application_answer_smoke": {
+    "http_status": 200,
+    "mode": "openai",
+    "claims": 1,
+    "evidence_backends": [
+      "pinecone"
+    ]
+  },
+  "corpus_sha256": "dc8bc0bb440cc4345abb2384935ddf286ff04b43db329908d318273189ca3f13"
+}

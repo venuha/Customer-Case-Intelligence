@@ -5,6 +5,8 @@ uploads, customer sessions and keys never enter the evaluation artifacts.
 """
 
 import argparse
+import asyncio
+import httpx
 import hashlib
 import json
 import math
@@ -13,6 +15,7 @@ from pathlib import Path
 import statistics
 import sys
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -77,6 +80,8 @@ def save_report(report):
         "the same OpenAI generation/judge models, and no deterministic case-reconciliation facts in the generation context. "
         "It does not benchmark the full application workflow or private uploads.",
         "",
+        "Faithfulness measures whether generated statements are supported by retrieved context; the evaluated response includes claims, unknowns and the suggested next step. Context precision is reference-guided, rank-weighted usefulness; context recall measures whether reference-answer claims are attributable to retrieved context. These are judge-based metrics, not exact-span retrieval scores.",
+        "",
         "| Configuration | Completed rows / expected | Faithfulness | Context precision | Context recall |",
         "|---|---:|---:|---:|---:|",
     ]
@@ -138,6 +143,23 @@ def save_report(report):
     (ROOT / "docs/evaluation-ragas.md").write_text("\n".join(lines))
 
 
+def resume_results(previous, report):
+    fields = (
+        "backend",
+        "question_count",
+        "generation_model",
+        "judge_model",
+        "corpus_sha256",
+        "references_sha256",
+        "prompt_sha256",
+        "ragas_version",
+    )
+    for field in fields:
+        if previous.get(field) != report.get(field):
+            raise ValueError("Resume provenance mismatch: " + field)
+    return previous.get("results", {})
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", choices=("local", "pinecone"), default="local")
@@ -152,7 +174,15 @@ def main():
         default=32,
         help="1..32; smaller runs are explicitly partial",
     )
+    parser.add_argument(
+        "--workers", type=int, default=4, help="Concurrent questions, 1..4"
+    )
+    parser.add_argument(
+        "--resume", action="store_true", help="Reuse completed rows from a matching run"
+    )
     args = parser.parse_args()
+    if not 1 <= args.workers <= 4:
+        parser.error("--workers must be 1..4")
     if not 1 <= args.limit <= 32:
         parser.error("--limit must be 1..32")
     references = read_references()[: args.limit]
@@ -173,6 +203,7 @@ def main():
             (ROOT / "data/eval/references.json").read_bytes()
         ).hexdigest(),
         "prompt_sha256": hashlib.sha256(str(PROMPT).encode()).hexdigest(),
+        "workers": args.workers,
         "results": {},
     }
     missing = [key for key in ("OPENAI_API_KEY",) if not os.getenv(key)]
@@ -200,7 +231,7 @@ def main():
         return 2 if missing else 0
     from langchain_openai import ChatOpenAI
     from langsmith import tracing_context
-    from ragas import EvaluationDataset, evaluate
+    from ragas import EvaluationDataset, aevaluate
     from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import (
         Faithfulness,
@@ -218,18 +249,32 @@ def main():
         timeout=60,
         max_retries=1,
     )
-    generator = ChatOpenAI(
-        model=report["generation_model"], max_tokens=1600, **model_args
-    ).with_structured_output(Answer)
-    judge = LangchainLLMWrapper(ChatOpenAI(model=report["judge_model"], **model_args))
     emb = LocalEmbeddings()
     docs = CorpusLoader().load()
     indexes = {}
+    if args.resume:
+        previous = json.loads((ROOT / "docs/evaluation-ragas.json").read_text())
+        try:
+            report["results"] = resume_results(previous, report)
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
     report["status"] = "running"
     save_report(report)
     for name, strategy, rerank in CONFIGURATIONS:
         print("Evaluating " + name, flush=True)
-        rows = report["results"][name] = []
+        existing = report["results"].get(name, [])
+        completed = {
+            (r["case_id"], r["question"]): r
+            for r in existing
+            if r.get("status") == "complete"
+        }
+        rows = report["results"][name] = [
+            completed.get(
+                (r["case_id"], r["question"]),
+                {**r, "status": "pending", **{m: None for m in METRICS}},
+            )
+            for r in references
+        ]
         if strategy not in indexes:
             indexes[strategy] = HybridIndex(
                 docs,
@@ -237,7 +282,12 @@ def main():
                 strategy,
                 backend="pinecone-strict" if args.backend == "pinecone" else "local",
             )
-        for reference in references:
+
+        def evaluate_one(reference):
+            # Each judge gets an explicit async client closed on its own event loop.
+            generator = ChatOpenAI(
+                model=report["generation_model"], max_tokens=1600, **model_args
+            ).with_structured_output(Answer)
             row = {
                 **reference,
                 "status": "failed",
@@ -283,20 +333,34 @@ def main():
                         "response": response_text(answer),
                         "retrieved_contexts": contexts,
                     }
-                    result = evaluate(
-                        EvaluationDataset.from_list([sample]),
-                        metrics=[
-                            Faithfulness(llm=judge),
-                            LLMContextPrecisionWithReference(
-                                name="context_precision", llm=judge
-                            ),
-                            LLMContextRecall(llm=judge),
-                        ],
-                        llm=judge,
-                        run_config=RunConfig(timeout=180, max_retries=1, max_workers=1),
-                        raise_exceptions=True,
-                        show_progress=False,
-                    )
+
+                    async def judge_sample():
+                        async with httpx.AsyncClient(timeout=60) as async_http:
+                            judge = LangchainLLMWrapper(
+                                ChatOpenAI(
+                                    model=report["judge_model"],
+                                    http_async_client=async_http,
+                                    **model_args,
+                                )
+                            )
+                            return await aevaluate(
+                                EvaluationDataset.from_list([sample]),
+                                metrics=[
+                                    Faithfulness(llm=judge),
+                                    LLMContextPrecisionWithReference(
+                                        name="context_precision", llm=judge
+                                    ),
+                                    LLMContextRecall(llm=judge),
+                                ],
+                                llm=judge,
+                                run_config=RunConfig(
+                                    timeout=180, max_retries=1, max_workers=1
+                                ),
+                                raise_exceptions=True,
+                                show_progress=False,
+                            )
+
+                    result = asyncio.run(judge_sample())
                 scores = result.scores[0]
                 row.update(
                     {metric: clean_score(scores.get(metric)) for metric in METRICS}
@@ -314,21 +378,59 @@ def main():
                     if all(row[m] is not None for m in METRICS)
                     else "invalid_metric"
                 )
-            except Exception:
+            except Exception as error:
+                row["error_type"] = type(error).__name__
+                body = getattr(error, "body", {}) or {}
+                detail = body.get("error", body) if isinstance(body, dict) else {}
+                if (
+                    isinstance(detail, dict)
+                    and detail.get("type") == "insufficient_quota"
+                ):
+                    row["failure_category"] = "provider_quota"
                 # Never serialize SDK exceptions, prompts with secrets or provider headers.
                 row["error"] = (
                     "Generation, retrieval or RAGAS judging failed; provider details suppressed."
                 )
-            rows.append(row)
+            return row
+
+        pending = [i for i, r in enumerate(rows) if r["status"] != "complete"]
+        # Validate one live question before scheduling the rest; fail early on bad credentials/billing.
+        if pending:
+            i = pending.pop(0)
+            rows[i] = evaluate_one(references[i])
             save_report(report)
-            print(f"{name}: {len(rows)}/{len(references)} {row['status']}", flush=True)
-            if row["status"] == "failed":
+            print(
+                f"{name}: {sum(r['status'] == 'complete' for r in rows)}/{len(rows)} {rows[i]['status']}",
+                flush=True,
+            )
+            if rows[i]["status"] == "failed":
                 report.update(
                     status="incomplete",
-                    reason="Provider execution failed; completed rows retained. Check private credentials, billing and model access. Rerun for a complete comparison.",
+                    reason=(
+                        "OpenAI generation blocked by insufficient_quota (HTTP 429). Resolve API billing/project quota, then resume. No RAGAS scores were fabricated."
+                        if rows[i].get("failure_category") == "provider_quota"
+                        else "Provider execution failed; completed rows retained. Check private credentials, billing/model access. Use --resume after resolving the error."
+                    ),
                 )
                 save_report(report)
                 return 1
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            futures = {pool.submit(evaluate_one, references[i]): i for i in pending}
+            for future in as_completed(futures):
+                i = futures[future]
+                rows[i] = future.result()
+                save_report(report)
+                print(
+                    f"{name}: {sum(r['status'] == 'complete' for r in rows)}/{len(rows)} {rows[i]['status']}",
+                    flush=True,
+                )
+        if any(r["status"] == "failed" for r in rows):
+            report.update(
+                status="incomplete",
+                reason="Some provider calls failed. Completed rows retained; use --resume to retry missing rows without paying to regenerate completed rows.",
+            )
+            save_report(report)
+            return 1
     complete = all(
         r["status"] == "complete" for rows in report["results"].values() for r in rows
     )

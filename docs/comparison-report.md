@@ -6,9 +6,9 @@ One case. Every connection.
 
 # Submission status
 
-Measured local retrieval comparisons are complete. Pinecone integration is implemented and tested with mocks. Live Pinecone synchronization and evaluation are not yet fully verified. RAGAS execution status: not_run. Preflight passed. No live API calls requested.
+Measured local retrieval comparisons are complete. Live Pinecone synchronization, all 24 case/role checks and a controlled local-fallback test passed. RAGAS execution status: complete. See the RAGAS companion report for detailed completion counts.
 
-This document does not claim completed live RAGAS evaluation or measured Pinecone performance unless those companion artifacts record successful runs. A final demo recording and hosting deployment remain separate deliverables.
+This report separates measured local/cloud retrieval results from RAGAS answer-quality judgments. A final demo recording and hosting deployment remain separate deliverables.
 
 # Required framework
 
@@ -35,6 +35,26 @@ The same 32 development questions and frozen sufficient-evidence anchors are use
 | semantic_cross_encoder | 989 | 0.859 | 0.161 | 0.610 | 1697.8 |
 | structure_cross_encoder | 342 | 0.844 | 0.161 | 0.716 | 2550.4 |
 
+# Pinecone retrieval comparison
+
+The same frozen 32 questions were evaluated with strict Pinecone dense search plus local BM25. No local dense fallback is allowed in this experiment; these are retrieval measurements, separate from RAGAS generation/judge scores.
+
+| Configuration | Chunks | Recall@6 | Precision@6 | MRR@6 | Median ms |
+|---|---:|---:|---:|---:|---:|
+| fixed | 274 | 0.875 | 0.172 | 0.683 | 204.9 |
+| fixed_cross_encoder | 274 | 0.891 | 0.172 | 0.743 | 2041.2 |
+| semantic | 989 | 0.828 | 0.151 | 0.593 | 202.4 |
+| semantic_cross_encoder | 989 | 0.859 | 0.161 | 0.610 | 1285.2 |
+| structure_cross_encoder | 342 | 0.844 | 0.161 | 0.716 | 2947.3 |
+
+Pinecone fixed reranking: evidence recall +1.56 percentage points; MRR +0.060.
+
+Pinecone semantic reranking: evidence recall +3.12 percentage points; MRR +0.017.
+
+
+Cloud and earlier local timings were measured at different times under different loads; they do not establish an isolated backend speed comparison. Per-query cloud backend labels and corpus hashes are in evaluation-pinecone.json.
+
+
 # Reranking impact
 
 The trained cross-encoder is Xenova/ms-marco-MiniLM-L-6-v2, run locally with FastEmbed ONNX. It scores query-passage pairs jointly after hybrid retrieval. All paired conditions use the same candidate pool; source title and case metadata accompany passages in every reranked condition.
@@ -58,24 +78,42 @@ Four configurations use the same 32 manually authored question/reference pairs: 
 
 RAGAS 0.3.9 evaluates Faithfulness, LLMContextPrecisionWithReference and LLMContextRecall. Generation and judging use separately invoked OpenAI models recorded in the JSON artifact. RAGAS metrics are model judgments and are not interchangeable with exact-span recall/precision. Telemetry and tracing are disabled for this command.
 
-Current status: not_run. No successful judge scores are available unless recorded below and in evaluation-ragas.json. Missing, failed or non-finite metrics remain unmeasured, never fabricated zeros.
+Faithfulness grades the complete rendered response, including factual claims, unknowns and the suggested next step. Reference-guided context precision measures rank-weighted usefulness, while context recall attributes reference-answer claims to retrieved passages. Recommendations can therefore affect faithfulness even when every retained claim has an exact source quote; quote matching is not a semantic-grounding guarantee.
+
+Generation model: gpt-4.1-mini; judge model: gpt-4.1-mini; temperature 0 for both. Current status: complete. The table records measured judge outputs when available; missing, failed or non-finite metrics remain unmeasured, never fabricated zeros.
 
 | Configuration | Completed rows / expected | Faithfulness | Context precision | Context recall |
 |---|---:|---:|---:|---:|
-| fixed | 0 / 32 | Not measured | Not measured | Not measured |
-| fixed_cross_encoder | 0 / 32 | Not measured | Not measured | Not measured |
-| semantic | 0 / 32 | Not measured | Not measured | Not measured |
-| semantic_cross_encoder | 0 / 32 | Not measured | Not measured | Not measured |
+| fixed | 32 / 32 | 0.784 (n=32) | 0.849 (n=32) | 0.984 (n=32) |
+| fixed_cross_encoder | 32 / 32 | 0.735 (n=32) | 0.884 (n=32) | 0.984 (n=32) |
+| semantic | 32 / 32 | 0.676 (n=32) | 0.863 (n=32) | 0.953 (n=32) |
+| semantic_cross_encoder | 32 / 32 | 0.592 (n=32) | 0.838 (n=32) | 0.969 (n=32) |
 
 # RAGAS paired impact
 
-- fixed, faithfulness: Not measured.
-- fixed, context_precision: Not measured.
-- fixed, context_recall: Not measured.
-- semantic, faithfulness: Not measured.
-- semantic, context_precision: Not measured.
-- semantic, context_recall: Not measured.
+- fixed, faithfulness: -0.049 (n=32).
+- fixed, context_precision: +0.034 (n=32).
+- fixed, context_recall: +0.000 (n=32).
+- semantic, faithfulness: -0.084 (n=32).
+- semantic, context_precision: -0.026 (n=32).
+- semantic, context_recall: +0.016 (n=32).
 
+
+
+# Interpretation of the measured RAGAS results
+
+Across the six paired RAGAS comparisons, reranking improved 2 metric averages, reduced 3, and left 1 unchanged. Retrieval improvements do not guarantee more faithful generated answers; the score table must be read alongside latency and individual failures.
+
+The application retains fixed-size hybrid retrieval by default and optional deeper reranking. These development-set measurements support reviewing the trade-off rather than declaring semantic chunking or reranking universally superior. A held-out real-document study and repeated judge runs are needed before a production choice.
+
+## Lowest-faithfulness examples for review
+
+- semantic, CASE-1001: What is the requested return amount? Faithfulness 0.000. Review the full response, unknowns, recommendation and retrieved source IDs in the JSON artifact; this is a judge flag, not proof that every factual claim is false.
+- semantic_cross_encoder, CASE-1001: What is the requested return amount? Faithfulness 0.000. Review the full response, unknowns, recommendation and retrieved source IDs in the JSON artifact; this is a judge flag, not proof that every factual claim is false.
+- semantic_cross_encoder, CASE-1002: What amount was approved? Faithfulness 0.000. Review the full response, unknowns, recommendation and retrieved source IDs in the JSON artifact; this is a judge flag, not proof that every factual claim is false.
+- semantic, CASE-1008: What payment was captured? Faithfulness 0.200. Review the full response, unknowns, recommendation and retrieved source IDs in the JSON artifact; this is a judge flag, not proof that every factual claim is false.
+
+All 128 rows have valid values for all three metrics. Requested retrieval backend: pinecone; actual per-hit backend labels are retained in the JSON artifact. Checkpoint retries retained successful rows; failed attempts are excluded from score averages and can add provider usage.
 
 # Reproduce and complete
 
@@ -83,7 +121,7 @@ Current status: not_run. No successful judge scores are available unless recorde
 
 2. Create the compatible Pinecone index, then run scripts/sync_pinecone.py. Confirm every strategy namespace is fully visible. Restart the application after environment changes.
 
-3. Install requirements-eval.txt (or the exact requirements-eval.lock snapshot). Run scripts/evaluate_ragas.py --preflight, then scripts/evaluate_ragas.py --backend pinecone. For a controlled local experiment use --backend local. The full comparison uses 128 generated answers plus multiple judge calls and incurs provider charges.
+3. Install requirements-eval.txt (or the exact requirements-eval.lock snapshot). Run scripts/evaluate_ragas.py --preflight, then scripts/evaluate_ragas.py --backend pinecone. For a controlled local experiment use --backend local. The full comparison evaluates 128 answers plus multiple judge calls and incurs provider charges; failed attempts and retries can add calls.
 
 4. Run scripts/build_comparison_report.py --pdf after live evaluations to refresh this document. Run scripts/scan_publication.py and scripts/package_submission.py before sharing; record the application demo separately.
 
@@ -93,7 +131,7 @@ Current status: not_run. No successful judge scores are available unless recorde
 - The 32 questions are a development benchmark, not an independent held-out test. Reference annotations may miss valid supporting paraphrases.
 - Existing retrieval timing measurements exclude downloads, embedding/index construction and OpenAI generation; concurrent local workloads limit timing precision.
 - A cross-encoder can only reorder retrieved candidates. It cannot recover a passage outside the candidate set or prove a real-world event occurred.
-- Same-family generation/judge models can share biases. RAGAS results require human review, especially for claims about missing credits or provisional adjustments.
+- Same-family generation/judge models can share biases. This is a single-pass evaluation with stochastic model outputs, not a confidence-interval estimate. RAGAS results require human review, especially for claims about missing credits or provisional adjustments.
 - No live bank transfer, refund, dispute submission, external ticket or customer message is executed. The optional bank sandbox adapter is not a verified live institution connection.
 
 # Implementation provenance

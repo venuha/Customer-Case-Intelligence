@@ -80,3 +80,26 @@ def test_real_ragas_metrics_with_mock_judge():
         return [await metric.single_turn_ascore(sample) for metric in metrics]
 
     assert all(abs(score - 1) < 0.00001 for score in asyncio.run(run()))
+
+
+def test_resume_requires_matching_experiment_provenance():
+    import pytest
+    from scripts.evaluate_ragas import resume_results
+
+    fields = (
+        "backend",
+        "question_count",
+        "generation_model",
+        "judge_model",
+        "corpus_sha256",
+        "references_sha256",
+        "prompt_sha256",
+        "ragas_version",
+    )
+    report = {field: str(i) for i, field in enumerate(fields)}
+    previous = {**report, "results": {"fixed": [{"status": "complete"}]}}
+    assert resume_results(previous, report) == previous["results"]
+    for field in fields:
+        changed = {**report, field: "different"}
+        with pytest.raises(ValueError, match="provenance mismatch"):
+            resume_results(previous, changed)
