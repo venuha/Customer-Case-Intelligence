@@ -9,6 +9,99 @@ A LangChain + LangGraph financial RAG application that connects a fictional cust
 
 The public app requires sign-in; new account requests need administrator approval and explicit case assignments. Render Free can take 50 seconds or longer to wake after inactivity. Accounts, private PDFs and saved investigations persist in Supabase across app restarts.
 
+## End-to-end architecture
+
+The deployed application has three connected work areas: evidence-based case investigation, shared communications and internal handoffs, and a separate simulation lab. **There is no live warehouse, bank, payment, email or ticket-system integration.** All bank evidence in the sample corpus is synthetic, and the simulation never moves money.
+
+```mermaid
+flowchart TB
+    U["Signed-in specialist, supervisor or head"] --> UI["Custom HTML / CSS / JavaScript interface"]
+    UI --> API["FastAPI on Render Free / HTTPS"]
+    API --> AUTH["Server-side sessions, roles and assigned-case checks"]
+    AUTH --> RAG["Case assistant / LangChain + LangGraph"]
+    AUTH --> TEAM["Shared timeline / demo directory / internal handoffs"]
+    AUTH --> LAB["Private simulation lab / ordered transitions"]
+    AUTH <--> DB[("Supabase private PostgreSQL schema")]
+    TEAM <--> DB
+    LAB <--> DB
+    RAG --> HISTORY["Private saved investigation runs"]
+    HISTORY --> DB
+    RAG --> AI["OpenAI / grounded generation when configured"]
+    RAG --> SEARCH["Hybrid retrieval / Pinecone or local fallback"]
+    API --> UP["Private PDF upload / ownership and case checks"]
+    UP --> BUCKET[("Supabase private PDF bucket")]
+    UP --> DB
+    UP --> LOCAL["Local private-PDF retrieval / never sent to Pinecone"]
+    LOCAL --> RAG
+    TEAM --> CONTEXT["Permitted shared entries and fictional directory context"]
+    CONTEXT --> RAG
+    LAB --> BRIEF["Rule-based simulation brief / event citations"]
+    BRIEF --> UI
+    RAG --> UI
+    TEAM --> UI
+```
+
+PostgreSQL persists accounts with salted password hashes, hashed/revocable sessions, private-upload metadata, investigation history, shared communications and simulation runs. The private object bucket persists uploaded PDFs. The fixed synthetic PDF corpus and warmed local index/model files ship in the application image; Pinecone holds only explicitly synchronized synthetic/reference chunks. Local development uses private SQLite files and local upload storage instead of hosted persistence.
+
+### Document ingestion, retrieval and grounded answers
+
+```mermaid
+flowchart TB
+    PDF["Synthetic source PDFs + curated public references"] --> CLEAN["Hash validation / PDF extraction / cleaning / page provenance"]
+    CLEAN --> CHUNK["Fixed-size OR semantic OR table-aware chunks"]
+    CHUNK --> EMB["BGE-small-en-v1.5 / 384-dimensional embeddings"]
+    EMB --> PC[("Pinecone strategy namespaces")]
+    EMB --> LD[("Local dense vectors and chunk cache")]
+    CHUNK --> BM["Local BM25 keyword index"]
+    Q["Question + selected case + signed-in role"] --> SCOPE["LangGraph: scope and cross-case refusal"]
+    SCOPE --> HYBRID["Permission-filtered dense + BM25 retrieval / rank fusion"]
+    PC --> HYBRID
+    LD --> HYBRID
+    BM --> HYBRID
+    HYBRID --> CE["Optional trained MiniLM cross-encoder reranking"]
+    CE --> CTX["Request-scoped evidence context"]
+    EXTRA["Own private PDFs / permitted latest 40 shared entries / demo directory"] --> CTX
+    CTX --> REC["Deterministic financial reconciliation"]
+    FACTS["Canonical structured source facts / role projection"] --> REC
+    REC --> GEN["OpenAI synthesis / or labeled evidence-only response"]
+    GEN --> CHECK["Citation ID and exact-excerpt checks / qualified missing-evidence wording"]
+    CHECK --> ANSWER["Cited answer / unknowns / next action / reviewable handoff draft"]
+    ANSWER --> SAVE["Private saved run in PostgreSQL"]
+    CHUNK -.-> EVAL["Offline paired evaluation / same 32 questions"]
+    CE -.-> EVAL
+    EVAL --> REPORT["Fixed vs semantic / reranking deltas / RAGAS comparison report"]
+```
+
+- **Chunking:** fixed-size chunks target 350 tokens with 40-token overlap; semantic segmentation uses adjacent embedding-distance breakpoints at the 70th percentile and the same size cap. Table-aware chunking preserves table blocks and repeats headers when splitting long tables.
+- **Storage and fallback:** authoritative chunk text/metadata and local vectors are cached under the configured index directory (default `data/index/`). Explicit synchronization stores synthetic/reference vectors, chunk text and scope metadata in immutable-content Pinecone namespaces. Failed or unusable cloud retrieval falls back locally; private PDF workspaces use local retrieval throughout.
+- **Context and access:** case and role checks apply before retrieval and again to returned evidence. Shared entries inherit referenced-source restrictions. Broad case briefs supplement similarity results with permitted milestone openings; directory and communication records are request-scoped supplements, not new verified financial facts.
+- **Grounding limits:** exact-excerpt verification checks source membership, not complete semantic entailment. Unknown events remain “not evidenced in the available records”; generated statements cannot change balances. The original 128-row RAGAS experiment covers the fixed corpus, not dynamic uploads, handoffs or simulation events.
+- **Keys:** infrastructure credentials stay in private server environment settings. Optional personal OpenAI keys remain in server process memory for the signed-in session. Simulation requires no AI or banking key. Private PDF context is sent to OpenAI only when an AI answer is requested with a configured key; raw files are not uploaded to Pinecone.
+
+### Internal handoffs and the isolated simulation journey
+
+The directory suggests fictional people, not verified external employees. **Review handoff → save → pending request → internal acknowledgement** records the requested/acknowledged demo individual separately from the signed-in author. It sends no external notification. The simulation below has its own per-user, per-case runs and does not update case-investigation evidence, balances, communications or retrieval indexes.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Purchase: Start fictional training run
+    Purchase --> ReturnAuthorized: Seed simulated purchase
+    ReturnAuthorized --> CarrierDelivered: Seed return and shipping history
+    CarrierDelivered --> WarehouseReceipt: Simulate intake scan
+    WarehouseReceipt --> DeviceVerified: Simulate matching device
+    WarehouseReceipt --> DeviceMismatch: Optional mismatch exception
+    DeviceMismatch --> DeviceVerified: Record reconciliation and verification
+    DeviceVerified --> RefundApproved: Simulate approval
+    RefundApproved --> RefundSubmitted: Simulate processor submission and trace
+    RefundSubmitted --> BankAcknowledged: Simulate bank acknowledgement
+    RefundSubmitted --> InformationRequired: Optional missing-trace exception
+    InformationRequired --> BankAcknowledged: Supply training trace and acknowledge
+    BankAcknowledged --> RefundPosted: Simulate matching statement credit
+    RefundPosted --> [*]: Training complete / no actual money movement
+```
+
+Each transition is validated on the server and saved with an author, timestamp, revision and citation ID. Per-run locking and revision checks reject skipped steps and duplicate/stale clicks. Exception events remain in history after resolution. Simulation briefs are explicitly **rule-based**, not OpenAI-generated; citations open private simulation event records. Completed runs survive app restarts and remain available when another training run is started.
+
 ## Quick start
 Python 3.12 recommended. Create a virtual environment, then:
 
@@ -58,7 +151,7 @@ python scripts/evaluate_tables.py
 python scripts/package_submission.py
 ```
 
-The application defaults to fixed-size hybrid retrieval; users can opt into cross-encoder reranking per question. The current PDF-corpus results are in `docs/evaluation-pdf.md` and `.json`. Fixed recall@6 improved from 87.5% to 89.1% with reranking, and semantic recall improved from 82.8% to 85.9%. All eight financial-table probes passed in each tested configuration. Earlier `docs/evaluation-expanded.*` results are historical. The project compares fixed versus semantic chunking on identical questions and measures trained cross-encoder impact; improvements are reported honestly, including regressions. A new recording and hosting deployment are still required for final submission. No real bank connection is claimed.
+The application defaults to fixed-size hybrid retrieval; users can opt into cross-encoder reranking per question. The current PDF-corpus results are in `docs/evaluation-pdf.md` and `.json`. Fixed recall@6 improved from 87.5% to 89.1% with reranking, and semantic recall improved from 82.8% to 85.9%. All eight financial-table probes passed in each tested configuration. Earlier `docs/evaluation-expanded.*` results are historical. The project compares fixed versus semantic chunking on identical questions and measures trained cross-encoder impact; improvements are reported honestly, including regressions. The app is deployed; a demo recording remains part of the final submission. No real bank connection is claimed.
 
 ## Security and publication
 Never commit `.env`, `work/`, local indexes, model caches, private identities/sessions, customer data or real provider responses. Run `python scripts/scan_publication.py` before publishing. Reports contain architecture and aggregate evaluation results, never keys. No external payment, dispute, ticket or customer message is executed. This prototype requires further production security and provider integration work before real customer use.
@@ -108,7 +201,7 @@ Configure `OPENAI_API_KEY` privately through the setup command above, then run:
 
 The full run makes generation and judge calls for 32 questions across four paired configurations and incurs OpenAI usage charges. `--limit 2` is an explicitly partial smoke run. Pinecone evaluations fail if the cloud is unavailable; they cannot silently report local results. Reports are saved incrementally to `docs/evaluation-ragas.json` and `.md`. Back up those reports before running a different backend if retaining both comparisons. No provider scores are invented when keys are absent, calls fail, or metrics return NaN.
 
-The controlled experiment uses retrieved context only, without the application's additional deterministic reconciliation. It evaluates Faithfulness, LLMContextPrecisionWithReference and LLMContextRecall with frozen manually authored answers in `data/eval/references.json`. These judge scores differ from exact-span retrieval metrics. Telemetry/tracing is disabled in this evaluation command. The combined submission report is `docs/comparison-report.md` with a PDF companion in `docs/pdf/comparison-report.pdf`; its status explicitly distinguishes measured retrieval results from pending live RAGAS results.
+The controlled experiment uses retrieved context only, without the application's additional deterministic reconciliation. It evaluates Faithfulness, LLMContextPrecisionWithReference and LLMContextRecall with frozen manually authored answers in `data/eval/references.json`. These judge scores differ from exact-span retrieval metrics. Telemetry/tracing is disabled in this evaluation command. The combined submission report is `docs/comparison-report.md` with a PDF companion in `docs/pdf/comparison-report.pdf`; it records the completed live RAGAS results, measured retrieval results and their limitations.
 
 
 ## Live Pinecone verification and evaluation checkpoints
