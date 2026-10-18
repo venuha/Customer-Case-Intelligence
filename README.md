@@ -3,6 +3,12 @@
 
 A LangChain + LangGraph financial RAG application that connects a fictional customer's order, device return, merchant refund and bank review. FastAPI serves a custom web interface, scoped evidence search, source PDFs and draft investigation handoffs.
 
+## Live application
+
+[Open Customer Case Intelligence](https://customer-case-intelligence.onrender.com/)
+
+The public app requires sign-in; new account requests need administrator approval and explicit case assignments. Render Free can take 50 seconds or longer to wake after inactivity. Accounts, private PDFs and saved investigations persist in Supabase across app restarts.
+
 ## Quick start
 Python 3.12 recommended. Create a virtual environment, then:
 

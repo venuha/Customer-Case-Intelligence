@@ -36,3 +36,14 @@ One instance and one worker are required. Temporary personal OpenAI keys remain 
 Check build and runtime logs, `/health`, unauthenticated API rejection, owner login, case/role restrictions, PDF upload/read/delete and a cited Pinecone-backed answer. Restart/redeploy the service and verify the same account and uploaded PDF still work. Confirm anonymous Supabase object access is denied. The public HTTPS app URL is assigned by Render; do not claim deployment before that address responds successfully.
 
 With an authorized GitHub connection, automatic deployments can wait for checks. Public-repository URL deployments without that connection require manual redeployment. See the existing RAGAS reports for measured retrieval and generation quality; deployment changes do not imply a new evaluation run or production readiness.
+
+
+## Live deployment verification — October 17, 2026
+
+Public application: https://customer-case-intelligence.onrender.com/
+
+The Free service was deployed from application commit `26c7bd3c887986bb2ea56ef21f7105e9eb9b5814`. Render reports the service as Free and Live; no payment details were supplied. Its image built successfully with all three fictional corpus caches. The deployment's GitHub checks passed and the local suite passed 74 tests.
+
+Live checks passed for `/health`, unauthenticated case API rejection, secure/HttpOnly/Strict session cookies, assigned-case access, unassigned-case denial, an OpenAI-generated answer with actual Pinecone retrieval and cross-encoder reranking, and private PDF upload/download. A second user assigned to the same case could not read the first user's PDF. Render recorded a service restart; the existing account/session, exact PDF bytes and saved investigation remained accessible afterward. Disposable verification identities and documents were deleted. A separate-process Supabase persistence test and anonymous denial for an existing private PDF also passed.
+
+This is a synthetic portfolio demonstration, not a production security certification, backup guarantee or new RAGAS benchmark. Provider free-tier limits, idle wake-up delays and project inactivity policies still apply. Personal OpenAI keys remain temporary by design.
