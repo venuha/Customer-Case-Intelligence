@@ -11,6 +11,10 @@ from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Depends
 from ..config import runtime_dir
+from ..security import provider_keys
+from ..documents import uploads
+from ..rag.retrieval import CorpusLoader, chunks_for
+from starlette.concurrency import run_in_threadpool
 from ..security.auth import (
     initialize,
     request_account,
@@ -75,9 +79,19 @@ app = FastAPI(
 )
 
 
+from fastapi.exceptions import RequestValidationError
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, error):
+    if request.url.path == "/api/provider-key":
+        return JSONResponse({"detail": "Enter a valid API key."}, status_code=422)
+    return JSONResponse({"detail": "Please check the request fields."}, status_code=422)
+
+
 @app.middleware("http")
 async def security(request: Request, call_next):
-    if request.method == "POST":
+    if request.method in ("POST", "DELETE"):
         host = request.headers.get("host", "")
         origin = request.headers.get("origin")
         if origin and origin not in ("http://" + host, "https://" + host):
@@ -97,6 +111,8 @@ async def security(request: Request, call_next):
                 )
             queue.append(now)
     response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Content-Security-Policy"] = (
@@ -124,7 +140,7 @@ def authorize(cid, user):
 def detail(cid, user):
     authorize(cid, user)
     case = get_case(cid)
-    docs = visible_documents(user, state["documents"], cid)
+    docs = visible_documents(user, state["documents"], cid) + uploads.records(user, cid)
     return {
         **case,
         "investigation": project_investigation(user, investigate(case, docs)),
@@ -138,9 +154,15 @@ def health():
 
 
 @app.get("/api/config")
-def config(user=Depends(require_user)):
+def config(request: Request, user=Depends(require_user)):
     return {
-        "ai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "ai_configured": bool(
+            provider_keys.personal_key(request.cookies.get(SESSION_COOKIE, ""))
+            or os.getenv("OPENAI_API_KEY")
+        ),
+        "personal_key_connected": bool(
+            provider_keys.personal_key(request.cookies.get(SESSION_COOKIE, ""))
+        ),
         "model": os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         "embedding": "BAAI/bge-small-en-v1.5",
         "reranker": RERANK_MODEL,
@@ -175,6 +197,121 @@ def public_source_pdf(did: str, user=Depends(require_user)):
         raise HTTPException(404, "Document not found")
     path = ROOT / "data/corpus" / f"{did}.pdf"
     return FileResponse(path, media_type="application/pdf", filename=path.name)
+
+
+class PersonalKey(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    api_key: str = Field(min_length=12, max_length=512, repr=False)
+
+
+@app.post("/api/provider-key")
+def connect_key(request: Request, body: PersonalKey, user=Depends(require_user)):
+    if request.url.scheme != "https" and request.url.hostname not in (
+        "localhost",
+        "127.0.0.1",
+        "testserver",
+    ):
+        raise HTTPException(400, "Use HTTPS to connect a personal key.")
+    try:
+        provider_keys.set_key(request.cookies.get(SESSION_COOKIE, ""), body.api_key)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+    return {
+        "connected": True,
+        "validated": False,
+        "message": "Connected for this session. Your first AI request will verify provider access.",
+    }
+
+
+@app.delete("/api/provider-key")
+def disconnect_key(request: Request, user=Depends(require_user)):
+    provider_keys.forget_key(request.cookies.get(SESSION_COOKIE, ""))
+    return {"connected": False}
+
+
+@app.post("/api/cases/{cid}/uploads")
+async def upload_pdf(cid: str, request: Request, user=Depends(require_user)):
+    authorize(cid, user)
+    content = bytearray()
+    async for part in request.stream():
+        content.extend(part)
+        if len(content) > uploads.MAX_BYTES:
+            raise HTTPException(413, "PDF limit is 10 MB.")
+    import base64
+
+    try:
+        name = base64.b64decode(
+            request.headers.get("x-document-name", ""), validate=True
+        ).decode("utf-8")
+    except Exception:
+        name = "Uploaded document.pdf"
+    try:
+        record = await run_in_threadpool(
+            uploads.store_pdf, user, cid, name, bytes(content)
+        )
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+    return {
+        "id": record["id"],
+        "title": record["title"],
+        "pages": len(record["pages"]),
+        "private": True,
+    }
+
+
+@app.get("/api/cases/{cid}/uploads/{did}/chunks")
+def upload_chunks(
+    cid: str,
+    did: str,
+    strategy: Literal["fixed", "semantic", "structure"] = "fixed",
+    user=Depends(require_user),
+):
+    authorize(cid, user)
+    record = uploads.get_record(user, cid, did)
+    if not record:
+        raise HTTPException(404, "Document not found")
+    chunks = chunks_for(uploads.documents(record), strategy, state["index"].embeddings)
+    return {
+        "strategy": strategy,
+        "count": len(chunks),
+        "chunks": [
+            {
+                "id": c.metadata["chunk_id"],
+                "page": c.metadata["page"],
+                "text": c.page_content,
+            }
+            for c in chunks
+        ],
+    }
+
+
+@app.delete("/api/cases/{cid}/uploads/{did}")
+def delete_upload(cid: str, did: str, user=Depends(require_user)):
+    authorize(cid, user)
+    record = uploads.get_record(user, cid, did)
+    if not record:
+        raise HTTPException(404, "Document not found")
+    for extension in (".json", ".pdf"):
+        (uploads.folder(user, cid) / (did + extension)).unlink(missing_ok=True)
+    uploads.remove_cached_indexes(did)
+    with sqlite3.connect(state["db"]) as db:
+        rows = db.execute(
+            "SELECT id,payload FROM runs WHERE case_id=?", (cid,)
+        ).fetchall()
+        for run_id, payload in rows:
+            run = json.loads(payload)
+            if run.get("username") == user.username and (
+                any(e.get("id") == did for e in run.get("evidence", []))
+                or any(
+                    c.get("source_id") == did
+                    for c in run.get("answer", {}).get("claims", [])
+                )
+            ):
+                db.execute("DELETE FROM runs WHERE id=?", (run_id,))
+    return {
+        "deleted": True,
+        "note": "Private PDF, cached indexes and your saved answers citing this source were removed.",
+    }
 
 
 class Login(BaseModel):
@@ -253,6 +390,7 @@ def me(user=Depends(require_user)):
 
 @app.post("/api/logout")
 def logout(request: Request, user=Depends(require_user)):
+    provider_keys.forget_key(request.cookies.get(SESSION_COOKIE, ""))
     revoke(request.cookies.get(SESSION_COOKIE, ""))
     response = JSONResponse({"signed_out": True})
     response.delete_cookie(SESSION_COOKIE)
@@ -262,10 +400,13 @@ def logout(request: Request, user=Depends(require_user)):
 @app.get("/api/cases/{cid}/documents/{did}/pdf")
 def source_pdf(cid: str, did: str, user=Depends(require_user)):
     authorize(cid, user)
-    docs = visible_documents(user, state["documents"], cid)
+    docs = visible_documents(user, state["documents"], cid) + uploads.records(user, cid)
     if not any(d["id"] == did for d in docs):
         raise HTTPException(404, "Document not found")
-    path = ROOT / "data/corpus" / f"{did}.pdf"
+    if did.startswith("UPLOAD-"):
+        path = uploads.folder(user, cid) / (did + ".pdf")
+    else:
+        path = ROOT / "data/corpus" / f"{did}.pdf"
     if not path.is_file():
         raise HTTPException(404, "PDF not generated")
     return FileResponse(path, media_type="application/pdf", filename=path.name)
@@ -278,20 +419,48 @@ class Query(BaseModel):
 
 
 @app.post("/api/cases/{cid}/ask")
-def ask(cid: str, query: Query, user=Depends(require_user)):
+def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
     authorize(cid, user)
     question = query.question.strip()
     if len(question) < 3:
         raise HTTPException(422, "Please enter a question.")
     started = time.perf_counter()
-    result = state["graph"].invoke(
-        {
-            "case_id": cid,
-            "question": question,
-            "role": user.role,
-            "use_reranker": query.rerank,
-        }
+    own = uploads.records(user, cid)
+    graph = state["graph"]
+    if own:
+        # Reuse corpus document embeddings; embed only new private passages.
+        if hasattr(state["index"].embeddings, "memo"):
+            state["index"].embeddings.memo.update(
+                {
+                    d.page_content: v.tolist()
+                    for d, v in zip(state["index"].docs, state["index"].vectors)
+                }
+            )
+        docs = CorpusLoader().load() + [
+            page for record in own for page in uploads.documents(record)
+        ]
+        index = HybridIndex(
+            documents=docs, embeddings=state["index"].embeddings, strategy="fixed"
+        )
+        graph = build_graph(index, state["cases"], state["documents"] + own)
+    bound = provider_keys.bind_key(
+        provider_keys.personal_key(request.cookies.get(SESSION_COOKIE, ""))
     )
+    try:
+        # Suppress external tracing of personal-key and uploaded-document requests.
+        from langsmith import tracing_context
+
+        with tracing_context(enabled=False):
+            result = graph.invoke(
+                {
+                    "case_id": cid,
+                    "question": question,
+                    "role": user.role,
+                    "use_reranker": query.rerank,
+                }
+            )
+    finally:
+        provider_keys.reset_key(bound)
     run = {
         "username": user.username,
         "role": user.role,

@@ -9,6 +9,7 @@ ROLE_LABELS = {
     "head": "Head of operations",
 }
 KIND_ROLES = {
+    "user_upload": "customer_service",
     "order": "customer_service",
     "payment": "supervisor",
     "return": "customer_service",
@@ -73,4 +74,14 @@ def project_investigation(principal, value):
         for key in ("approved_cents", "submitted_cents", "provisional_cents"):
             result[key] = None
         result["finance_detail_restricted"] = True
+        restricted = {
+            "Payment captured",
+            "Device verified",
+            "Refund approved",
+            "Refund submitted",
+        }
+        result["timeline"] = [
+            {**stage, "restricted": True} if stage["label"] in restricted else stage
+            for stage in result["timeline"]
+        ]
     return result

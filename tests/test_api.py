@@ -280,3 +280,123 @@ def test_head_approves_pending_user_with_explicit_case_access(client):
     )
     client.cookies.clear()
     client.cookies.set("cci_session", cookie, domain="testserver.local", path="/")
+
+
+def test_personal_key_is_session_scoped_and_not_persisted(client, monkeypatch):
+    from app.api.application import state
+    from app.security.auth import new_session, SESSION_COOKIE
+    from app.security.policy import Principal
+    from app.security import provider_keys
+
+    original = client.cookies.get(SESSION_COOKIE)
+    first = new_session(Principal("test_head", "head", ("CASE-1001",)))
+    second = new_session(Principal("test_head", "head", ("CASE-1001",)))
+
+    def cookie(value):
+        client.cookies.clear()
+        client.cookies.set(SESSION_COOKIE, value, domain="testserver.local", path="/")
+
+    key = "unit-only-provider-credential"
+    cookie(first)
+    assert client.post("/api/provider-key", json={"api_key": key}).status_code == 200
+    assert client.get("/api/config").json()["personal_key_connected"]
+    assert key not in client.get("/api/config").text
+    assert (
+        key
+        not in client.post(
+            "/api/provider-key", json={"api_key": key, "extra": "invalid"}
+        ).text
+    )
+
+    class FakeGraph:
+        def invoke(self, payload):
+            assert provider_keys.effective_key() == key
+            assert key not in str(payload)
+            return {
+                "answer": {
+                    "claims": [],
+                    "unknowns": ["Mock response"],
+                    "suggested_next_step": "Review.",
+                },
+                "trace": ["Mock"],
+                "evidence": [],
+            }
+
+    monkeypatch.setitem(state, "graph", FakeGraph())
+    result = client.post("/api/cases/CASE-1001/ask", json={"question": "Check my case"})
+    assert result.status_code == 200
+    assert (
+        key not in result.text
+        and key not in client.get("/api/cases/CASE-1001/history").text
+    )
+    assert provider_keys._current.get() is None
+    cookie(second)
+    assert not client.get("/api/config").json()["personal_key_connected"]
+    cookie(first)
+    assert client.post("/api/logout").status_code == 200
+    assert provider_keys.personal_key(first) is None
+    cookie(original)
+
+
+def test_private_pdf_upload_chunks_retrieval_and_owner_isolation(client):
+    import pymupdf, secrets
+    from app.security.auth import create_user, new_session, SESSION_COOKIE
+    from app.security.policy import Principal
+
+    original = client.cookies.get(SESSION_COOKIE)
+    pdf = pymupdf.open()
+    page = pdf.new_page()
+    page.insert_text(
+        (70, 90),
+        "PRIVATEUPLOAD8675: The supplemental refund note requests a warehouse intake receipt.",
+    )
+    content = pdf.tobytes()
+    pdf.close()
+    response = client.post(
+        "/api/cases/CASE-1001/uploads",
+        content=content,
+        headers={"content-type": "application/pdf"},
+    )
+    assert response.status_code == 200
+    did = response.json()["id"]
+    assert (
+        client.get("/api/cases/CASE-1001/uploads/" + did + "/chunks").json()["count"]
+        > 0
+    )
+    detail = client.get("/api/cases/CASE-1001").json()
+    assert any(d["id"] == did for d in detail["documents"])
+    result = client.post(
+        "/api/cases/CASE-1001/ask",
+        json={"question": "What does PRIVATEUPLOAD8675 request?"},
+    )
+    assert result.status_code == 200
+    assert any(e["id"] == did for e in result.json()["evidence"])
+    create_user("other_upload_owner", secrets.token_urlsafe(24), "head", ["CASE-1001"])
+    other = new_session(Principal("other_upload_owner", "head", ("CASE-1001",)))
+    client.cookies.clear()
+    client.cookies.set(SESSION_COOKIE, other, domain="testserver.local", path="/")
+    assert all(
+        d["id"] != did for d in client.get("/api/cases/CASE-1001").json()["documents"]
+    )
+    assert (
+        client.get("/api/cases/CASE-1001/uploads/" + did + "/chunks").status_code == 404
+    )
+    assert (
+        client.get("/api/cases/CASE-1001/documents/" + did + "/pdf").status_code == 404
+    )
+    assert client.delete("/api/cases/CASE-1001/uploads/" + did).status_code == 404
+    client.cookies.clear()
+    client.cookies.set(SESSION_COOKIE, original, domain="testserver.local", path="/")
+    assert client.delete("/api/cases/CASE-1001/uploads/" + did).status_code == 200
+    assert (
+        client.get("/api/cases/CASE-1001/uploads/" + did + "/chunks").status_code == 404
+    )
+    assert not any(
+        e["id"] == did
+        for run in client.get("/api/cases/CASE-1001/history").json()
+        for e in run.get("evidence", [])
+    )
+    assert (
+        client.post("/api/cases/CASE-1001/uploads", content=b"not a pdf").status_code
+        == 422
+    )

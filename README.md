@@ -70,3 +70,10 @@ python scripts/manage_users.py approve --username NAME --role customer_service -
 ```
 
 The user can then sign in with the password they chose. Approval does not send email; this prototype uses local administrator review. Only an authenticated head or the host administrator can approve operational access. New users cannot select supervisor/head access or grant themselves cases.
+
+## Personal AI keys and private PDFs
+Open a case and select **Case assistant** or **Ask this case**. **Connect your OpenAI key** retains a personal key only in process memory, scoped to the current login session and its original expiry. Sign-out/removal clears it; restart loses it. No key is returned to the browser or included in graph state, history, indexes, reports or Git. Hosted key entry requires HTTPS. This is a single-process prototype: multiple workers need a dedicated session-secret service. The first AI request validates provider access and may incur charges; no real-key generation evaluation has been run.
+
+The **Evidence** tab accepts private text-based PDFs (10 MB, 50 pages, 200,000 extracted characters, ten files per user per case). Uploading and chunk inspection use local models and require no OpenAI key. Choose fixed, semantic or table-aware splitting in **Inspect chunks**. Private uploads are owner-scoped even when colleagues have the same case assignment. They supplement retrieval and do not change verified refund balances. With AI enabled, retrieved excerpts are sent to OpenAI under the connected key; review sensitive content before asking.
+
+Private originals and extracted records are stored beneath ignored `work/uploads/`; derived chunks and embeddings remain in ignored `data/index/`. Removing a private upload purges indexes containing its source ID and the owner's saved answers citing it. Backups, retention policy, malware scanning, OCR for image-only PDFs, full multi-turn conversation memory, provider usage accounting and live institution integrations remain production work. Existing benchmark scores describe the fixed fictional corpus, not arbitrary user uploads.
