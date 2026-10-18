@@ -77,3 +77,29 @@ Open a case and select **Case assistant** or **Ask this case**. **Connect your O
 The **Evidence** tab accepts private text-based PDFs (10 MB, 50 pages, 200,000 extracted characters, ten files per user per case). Uploading and chunk inspection use local models and require no OpenAI key. Choose fixed, semantic or table-aware splitting in **Inspect chunks**. Private uploads are owner-scoped even when colleagues have the same case assignment. They supplement retrieval and do not change verified refund balances. With AI enabled, retrieved excerpts are sent to OpenAI under the connected key; review sensitive content before asking.
 
 Private originals and extracted records are stored beneath ignored `work/uploads/`; derived chunks and embeddings remain in ignored `data/index/`. Removing a private upload purges indexes containing its source ID and the owner's saved answers citing it. Backups, retention policy, malware scanning, OCR for image-only PDFs, full multi-turn conversation memory, provider usage accounting and live institution integrations remain production work. Existing benchmark scores describe the fixed fictional corpus, not arbitrary user uploads.
+
+
+## Pinecone with local fallback
+The dense search backend can use Pinecone Serverless while BM25 remains local. Use an index with **384 dimensions, cosine metric, and external vectors** to match BGE-small; the reference kit's 768-dimensional index is incompatible with this model. Index creation is an administrator action in the Pinecone console. Runtime requests never create or delete cloud indexes.
+
+For secure local setup, run `.venv/bin/python scripts/configure_providers.py` in your own terminal. It prompts for keys without echoing them and saves them in the ignored, permission-600 `.env`. Alternatively edit that file privately: set `PINECONE_API_KEY`, `PINECONE_INDEX_NAME`, and `VECTOR_BACKEND=pinecone`. Never enter the infrastructure key in the personal OpenAI dialog, a GitHub file, report, screenshot or chat. In hosting, use the host's server-side secret environment settings.
+
+Run `.venv/bin/python scripts/sync_pinecone.py` to explicitly synchronize the fictional PDF corpus. Each strategy uses a separate immutable-content namespace (`cci-fixed-<fingerprint>`, `cci-semantic-<fingerprint>`, `cci-structure-<fingerprint>`). Vectors plus chunk text, source/page, case scope and role level are stored in Pinecone. Full PDFs and authoritative chunk metadata stay local. Upserts use deterministic IDs, so retrying cannot create duplicates; old corpus namespaces are retained and must be removed explicitly by an administrator when no longer needed.
+
+Search applies case and role metadata filters in Pinecone and validates returned IDs against the local permitted set. An unavailable provider, invalid index dimensions, incomplete namespace or failed scope validation uses the local dense index. Query results record `retrieval_backend` (`pinecone`, `local-fallback`, or `local`). Private PDF workspaces always use local retrieval, including canonical evidence for that workspace; they are never synchronized by the cloud upload command. Pinecone stores only the fixed fictional/reference corpus in this implementation.
+
+## RAGAS comparison
+Install optional evaluation dependencies with `.venv/bin/pip install -r requirements-eval.txt`. An exact snapshot of the tested environment is in `requirements-eval.lock`. This is separate from the app runtime because RAGAS adds dataset/judge dependencies.
+
+Configure `OPENAI_API_KEY` privately through the setup command above, then run:
+
+```sh
+.venv/bin/python scripts/evaluate_ragas.py --preflight
+.venv/bin/python scripts/evaluate_ragas.py --backend local
+# After successful cloud synchronization, compare using Pinecone instead:
+.venv/bin/python scripts/evaluate_ragas.py --backend pinecone
+```
+
+The full run makes generation and judge calls for 32 questions across four paired configurations and incurs OpenAI usage charges. `--limit 2` is an explicitly partial smoke run. Pinecone evaluations fail if the cloud is unavailable; they cannot silently report local results. Reports are saved incrementally to `docs/evaluation-ragas.json` and `.md`. Back up those reports before running a different backend if retaining both comparisons. No provider scores are invented when keys are absent, calls fail, or metrics return NaN.
+
+The controlled experiment uses retrieved context only, without the application's additional deterministic reconciliation. It evaluates Faithfulness, LLMContextPrecisionWithReference and LLMContextRecall with frozen manually authored answers in `data/eval/references.json`. These judge scores differ from exact-span retrieval metrics. Telemetry/tracing is disabled in this evaluation command. The combined submission report is `docs/comparison-report.md` with a PDF companion in `docs/pdf/comparison-report.pdf`; its status explicitly distinguishes measured retrieval results from pending live RAGAS results.

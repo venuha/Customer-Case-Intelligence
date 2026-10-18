@@ -1,0 +1,14 @@
+{
+  "status": "not_run",
+  "question_count": 32,
+  "full_question_count": 32,
+  "backend": "pinecone",
+  "date_utc": "2026-10-18T01:01:18.631471+00:00",
+  "generation_model": "gpt-4.1-mini",
+  "judge_model": "gpt-4.1-mini",
+  "corpus_sha256": "dc8bc0bb440cc4345abb2384935ddf286ff04b43db329908d318273189ca3f13",
+  "references_sha256": "4a1c3410f8e5a333b062db2f16e3e80b8d5d8eeffc7df6116a17372cb5c34c6a",
+  "prompt_sha256": "8aeedd292cccd6b33356d002b588ae487292e1b5b861fd8af3723ca0255062ab",
+  "results": {},
+  "reason": "Preflight passed. No live API calls requested."
+}

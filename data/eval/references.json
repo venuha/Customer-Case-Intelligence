@@ -1,0 +1,162 @@
+[
+  {
+    "case_id": "CASE-1001",
+    "question": "Was the returned package delivered?",
+    "reference": "The shipping record reports delivery on September 9."
+  },
+  {
+    "case_id": "CASE-1001",
+    "question": "Did support say the refund was completed?",
+    "reference": "Support claimed \u201cYour refund is completed.\u201d That claim alone does not verify receipt."
+  },
+  {
+    "case_id": "CASE-1001",
+    "question": "What is the requested return amount?",
+    "reference": "The requested device refund is USD 1,099.00."
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "What is the processor refund trace reference?",
+    "reference": "The processor refund trace reference is DEMO-TRACE-0002."
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "Does the statement show a posted merchant refund credit?",
+    "reference": "No matching merchant refund credit appears in the supplied statement; that does not prove no funds arrived elsewhere."
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "What amount was approved?",
+    "reference": "USD 899.00 was approved."
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "Which device inspection is missing?",
+    "reference": "The second device has no inspection record."
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "How much merchant refund credit posted?",
+    "reference": "The statement shows USD 799.00 in posted merchant refund credit."
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "How much refund was submitted?",
+    "reference": "USD 799.00 was submitted for refund."
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "Is the merchant refund posted?",
+    "reference": "The statement shows a posted merchant refund credit of USD 649.00."
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "What is the refund processor reference?",
+    "reference": "The refund processor reference is DEMO-TRACE-0004."
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "Was device inspection accepted?",
+    "reference": "The inspection record says the device matched and was accepted."
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "Does tracking prove carrier acceptance?",
+    "reference": "No carrier acceptance or delivery scan appears in the tracking record; possession is not established."
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "What return label was created?",
+    "reference": "The return label is SHIP-0005. Label creation alone does not prove carrier acceptance."
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "Which device was ordered?",
+    "reference": "The ordered device identifier is DEV-88005."
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "Does the scanned device match the expected device?",
+    "reference": "The inspection reports an identifier mismatch; the scanned device does not match the expected identifier."
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "What is the order device identifier?",
+    "reference": "The order device identifier is DEV-88006."
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "Was the package delivered?",
+    "reference": "The shipping record reports delivery on September 9."
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "What amount was approved for refund?",
+    "reference": "USD 749.00 was approved for refund."
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "Is a matching refund posted in the statement?",
+    "reference": "No matching merchant refund credit appears in the supplied statement."
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "Was the device accepted after inspection?",
+    "reference": "The inspection record says the device matched and was accepted."
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "Is the dispute credit provisional or a merchant refund?",
+    "reference": "The USD 1,299.00 dispute adjustment is provisional credit, not verified merchant refund credit."
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "What trace reference accompanies the submitted refund?",
+    "reference": "The submitted refund has trace reference DEMO-TRACE-0008."
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "What payment was captured?",
+    "reference": "The captured purchase amount is USD 1,299.00."
+  },
+  {
+    "case_id": "CASE-1001",
+    "question": "Compare the agent completion claim with the customer-provided statement.",
+    "reference": "The agent claimed the refund was completed, but no matching merchant refund credit appears in the supplied statement. The claim and customer-visible receipt are not reconciled."
+  },
+  {
+    "case_id": "CASE-1002",
+    "question": "Was the money sent and is receipt visible to the customer?",
+    "reference": "USD 899.00 was submitted for refund, but no matching merchant refund credit appears in the supplied statement. Submission does not establish receipt."
+  },
+  {
+    "case_id": "CASE-1003",
+    "question": "Connect the uninspected second device with the partial credit.",
+    "reference": "The second device has no inspection record, and the statement shows USD 799.00 in posted merchant refund credit. The evidence shows a partial credit and an inspection gap; it does not by itself prove causation."
+  },
+  {
+    "case_id": "CASE-1004",
+    "question": "Connect the outgoing refund and the incoming credit.",
+    "reference": "The outgoing refund record shows USD 649.00 submitted, and the statement shows USD 649.00 in posted merchant refund credit."
+  },
+  {
+    "case_id": "CASE-1005",
+    "question": "Does generating return paperwork establish that the carrier took possession?",
+    "reference": "A return label was created, but no carrier acceptance or delivery scan appears. Return paperwork alone does not establish carrier possession."
+  },
+  {
+    "case_id": "CASE-1006",
+    "question": "Compare the purchased device identifier with the scanned return.",
+    "reference": "The purchased device identifier is DEV-88006; the inspection reports an identifier mismatch with the scanned return."
+  },
+  {
+    "case_id": "CASE-1007",
+    "question": "Does internal approval mean the customer received a credit?",
+    "reference": "USD 749.00 was approved internally, but no matching merchant refund credit appears in the statement. Approval does not establish customer receipt."
+  },
+  {
+    "case_id": "CASE-1008",
+    "question": "Distinguish the merchant payment record from the temporary dispute adjustment.",
+    "reference": "The merchant refund record shows USD 1,299.00 submitted. The statement has a USD 1,299.00 provisional dispute adjustment, which is not verified merchant refund credit."
+  }
+]

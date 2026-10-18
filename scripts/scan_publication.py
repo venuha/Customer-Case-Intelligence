@@ -10,6 +10,8 @@ TOP = {
     "requirements.txt",
     "requirements.lock",
     "requirements-dev.txt",
+    "requirements-eval.txt",
+    "requirements-eval.lock",
     "Dockerfile",
     "render.yaml",
     "start.command",
@@ -50,6 +52,7 @@ def scan():
     patterns = [
         re.compile(r"sk-(?:proj-)?[A-Za-z0-9_-]{24,}"),
         re.compile(r"gh[pousr]_[A-Za-z0-9]{25,}"),
+        re.compile(r"pcsk_[A-Za-z0-9_-]{20,}"),
         re.compile(r"AKIA[0-9A-Z]{16}"),
         re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     ]

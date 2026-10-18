@@ -146,7 +146,13 @@ def reranker_passage(document):
 
 
 class HybridIndex:
-    def __init__(self, documents=None, embeddings=None, strategy="structure"):
+    def __init__(
+        self, documents=None, embeddings=None, strategy="structure", backend=None
+    ):
+        self.backend = backend or os.getenv("VECTOR_BACKEND", "local")
+        if self.backend not in ("local", "pinecone", "pinecone-strict"):
+            raise ValueError("Unsupported vector backend")
+        self.strategy = strategy
         self.embeddings = embeddings or LocalEmbeddings()
         source_docs = documents if documents is not None else CorpusLoader().load()
         folder = ROOT / "data" / "index"
@@ -198,6 +204,12 @@ class HybridIndex:
             temp = folder / f"{fingerprint}.{os.getpid()}.tmp.npy"
             np.save(temp, self.vectors)
             temp.replace(path)
+        self.fingerprint = fingerprint
+        self.cloud = None
+        if not any(d.metadata.get("kind") == "user_upload" for d in self.docs):
+            from .pinecone_store import PineconeDense
+
+            self.cloud = PineconeDense(self.docs, fingerprint, strategy)
         norms = np.linalg.norm(self.vectors, axis=1, keepdims=True)
         self.vectors = self.vectors / np.maximum(norms, 1e-9)
 
@@ -220,6 +232,22 @@ class HybridIndex:
         dense = self.vectors[ids] @ q
         a = np.argsort(-sparse)[:20]
         b = np.argsort(-dense)[:20]
+        backend_used = "local"
+        if self.backend != "local" and self.cloud is not None:
+            try:
+                positions = self.cloud.ranking(q, case_id, role, ids)
+                local_positions = {position: j for j, position in enumerate(ids)}
+                b = [local_positions[position] for position in positions]
+                backend_used = "pinecone"
+            except Exception:
+                # Never expose provider errors/credentials; controlled experiments fail instead.
+                if self.backend == "pinecone-strict":
+                    raise RuntimeError(
+                        "Pinecone unavailable; strict evaluation refuses fallback"
+                    ) from None
+                backend_used = "local-fallback"
+        elif self.backend == "pinecone-strict":
+            raise RuntimeError("Private uploads cannot use the cloud benchmark backend")
         scores = {}
         for ranking in (a, b):
             for rank, index in enumerate(ranking):
@@ -248,6 +276,7 @@ class HybridIndex:
                 score=round(cross_scores.get(j, float(scores[j])), 5),
                 fusion_score=round(float(scores[j]), 5),
                 reranker=RERANK_MODEL if rerank else None,
+                retrieval_backend=backend_used,
                 dense_score=round(float(dense[j]), 4),
                 matched_terms=sorted(set(words) & set(self.lexical[ids[j]])),
             )

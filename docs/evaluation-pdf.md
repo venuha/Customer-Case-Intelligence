@@ -10,16 +10,16 @@ Trained reranker: `Xenova/ms-marco-MiniLM-L-6-v2` (FastEmbed ONNX). Scores below
 
 | Configuration | Chunks | Evidence recall@6 | Evidence precision@6 | Evidence MRR@6 | Document recall@6 | Median ms |
 |---|---:|---:|---:|---:|---:|---:|
-| fixed | 274 | 0.875 | 0.172 | 0.683 | 0.938 | 37.2 |
-| fixed_cross_encoder | 274 | 0.891 | 0.172 | 0.743 | 0.938 | 7856.6 |
-| semantic | 989 | 0.828 | 0.151 | 0.593 | 0.922 | 34.8 |
-| semantic_cross_encoder | 989 | 0.859 | 0.161 | 0.610 | 0.922 | 2522.2 |
-| structure_cross_encoder | 342 | 0.844 | 0.161 | 0.716 | 0.938 | 5138.6 |
+| fixed | 274 | 0.875 | 0.172 | 0.683 | 0.938 | 15.6 |
+| fixed_cross_encoder | 274 | 0.891 | 0.172 | 0.743 | 0.938 | 2283.1 |
+| semantic | 989 | 0.828 | 0.151 | 0.593 | 0.922 | 12.1 |
+| semantic_cross_encoder | 989 | 0.859 | 0.161 | 0.610 | 0.922 | 1697.8 |
+| structure_cross_encoder | 342 | 0.844 | 0.161 | 0.716 | 0.938 | 2550.4 |
 
 ## Paired reranking impact
 
-- fixed: evidence recall +1.56 percentage points; precision +0.00 points; MRR +0.060; median latency +7819.3 ms.
-- semantic: evidence recall +3.12 percentage points; precision +1.04 points; MRR +0.017; median latency +2487.4 ms.
+- fixed: evidence recall +1.56 percentage points; precision +0.00 points; MRR +0.060; median latency +2267.5 ms.
+- semantic: evidence recall +3.12 percentage points; precision +1.04 points; MRR +0.017; median latency +1685.8 ms.
 
 ## Failure analysis
 
@@ -70,7 +70,3 @@ Trained reranker: `Xenova/ms-marco-MiniLM-L-6-v2` (FastEmbed ONNX). Scores below
 Faithfulness: Not measured without live generation and a judge. Exact evidence-span recall and quote existence are not faithfulness.
 
 Per-query ranks, source IDs, chunk IDs, model scores, and corpus/query hashes are recorded in evaluation.json. No query or gold annotation is loaded by the application retriever.
-
-## Interpretation
-
-The cross-encoder improves aggregate evidence recall for both fixed and semantic chunking in this PDF experiment, at substantial latency cost. The app offers fast fixed retrieval by default with optional deeper reranking. Timings include concurrent local validation, and exclude cold downloads/index building and OpenAI generation.

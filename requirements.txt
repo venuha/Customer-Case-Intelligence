@@ -16,3 +16,5 @@ tiktoken>=0.12,<1
 reportlab>=4.4,<6
 pymupdf>=1.26,<2
 pypdf>=6,<7
+
+pinecone==8.1.2

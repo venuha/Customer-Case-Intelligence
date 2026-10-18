@@ -14,6 +14,7 @@ def render(text, path, title, source_id="PROJECT GUIDE"):
     styles["BodyText"].allowWidows = 0
     styles["BodyText"].allowOrphans = 0
     styles["Title"].textColor = colors.HexColor("#173e37")
+    styles["Heading2"].keepWithNext = True
     story = [
         Paragraph(escape(title), styles["Title"]),
         Paragraph(

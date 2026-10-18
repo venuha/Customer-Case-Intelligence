@@ -165,6 +165,8 @@ def config(request: Request, user=Depends(require_user)):
         ),
         "model": os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         "embedding": "BAAI/bge-small-en-v1.5",
+        "vector_backend": os.getenv("VECTOR_BACKEND", "local"),
+        "private_upload_backend": "local",
         "reranker": RERANK_MODEL,
         "corpus_documents": len(visible_documents(user, state["documents"])),
         "synthetic": True,
