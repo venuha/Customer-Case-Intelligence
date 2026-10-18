@@ -19,7 +19,7 @@ from app.storage.database import connect, private_local_file
 
 from ..config import runtime_dir
 from ..documents import uploads
-from ..domain import communications, directory
+from ..domain import communications, directory, simulation
 from ..domain.investigation import investigate, money
 from ..rag.capacity import bounded_inference
 from ..rag.case_context import ContextIndex
@@ -51,6 +51,7 @@ guard = threading.Lock()
 async def lifespan(app):
     initialize()
     communications.initialize()
+    simulation.initialize()
     communications.seed_history()
     data = ROOT / os.getenv("DATA_DIR", "data")
     cases = json.loads((data / "cases.json").read_text())
@@ -180,6 +181,67 @@ def detail(cid, user):
         "documents": docs,
         "team_ownership": ownership,
     }
+
+
+class SimulationStep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=0)
+    action: Literal[
+        "received",
+        "verified",
+        "device_mismatch",
+        "approved",
+        "submitted",
+        "bank_info_required",
+        "bank_received",
+        "posted",
+    ]
+
+
+@app.get("/api/cases/{cid}/simulation")
+def simulation_latest(cid: str, user=Depends(require_user)):
+    authorize(cid, user)
+    return {"notice": simulation.NOTICE, "run": simulation.latest(user, cid)}
+
+
+@app.post("/api/cases/{cid}/simulation")
+def simulation_create(cid: str, user=Depends(require_user)):
+    authorize(cid, user)
+    try:
+        return simulation.create(user, cid)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
+
+
+@app.post("/api/cases/{cid}/simulation/{rid}/step")
+def simulation_step(
+    cid: str, rid: str, body: SimulationStep, user=Depends(require_user)
+):
+    authorize(cid, user)
+    try:
+        return simulation.advance(user, cid, rid, body.revision, body.action)
+    except ValueError as error:
+        raise HTTPException(
+            409 if "changed" in str(error) else 422, str(error)
+        ) from None
+
+
+@app.get("/api/cases/{cid}/simulation/{rid}/sources/{eid}")
+def simulation_source(cid: str, rid: str, eid: str, user=Depends(require_user)):
+    authorize(cid, user)
+    record = simulation.source(user, cid, rid, eid)
+    if not record:
+        raise HTTPException(404, "Simulation source not found.")
+    return record
+
+
+@app.get("/api/cases/{cid}/simulation/{rid}/brief")
+def simulation_brief(cid: str, rid: str, user=Depends(require_user)):
+    authorize(cid, user)
+    try:
+        return simulation.brief(user, cid, rid)
+    except ValueError:
+        raise HTTPException(404, "Simulation not found.") from None
 
 
 @app.get("/health")
