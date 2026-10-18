@@ -2,16 +2,12 @@ services:
   - type: web
     name: customer-case-intelligence
     runtime: docker
-    plan: 1c-2g
+    plan: free
     region: virginia
     numInstances: 1
     autoDeployTrigger: checksPass
     renderSubdomainPolicy: enabled
     healthCheckPath: /health
-    disk:
-      name: case-intelligence-storage
-      mountPath: /app/work
-      sizeGB: 5
     envVars:
       - key: COOKIE_SECURE
         value: "true"
@@ -37,3 +33,15 @@ services:
         value: owner
       - key: CCI_BOOTSTRAP_PASSWORD
         sync: false
+      - key: REQUIRE_DURABLE_STORAGE
+        value: "true"
+      - key: CCI_LOW_MEMORY
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: cci-private-documents

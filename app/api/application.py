@@ -1,39 +1,42 @@
 import json
 import os
-import sqlite3
 import threading
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
-from uuid import uuid4
 from typing import Literal
+from uuid import uuid4
+
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Depends
-from ..config import runtime_dir
-from ..security import provider_keys
-from ..documents import uploads
-from ..rag.retrieval import CorpusLoader, chunks_for
-from starlette.concurrency import run_in_threadpool
-from ..security.auth import (
-    initialize,
-    request_account,
-    pending_users,
-    approve_user,
-    authenticate,
-    new_session,
-    require_user,
-    revoke,
-    SESSION_COOKIE,
-    SESSION_TTL,
-)
-from ..security.policy import visible_documents, project_investigation
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
+
+from app.storage.database import connect, private_local_file
+
+from ..config import runtime_dir
+from ..documents import uploads
 from ..domain.investigation import investigate, money
-from ..rag.retrieval import HybridIndex, RERANK_MODEL
 from ..rag.graph import build_graph
+from ..rag.capacity import bounded_inference
+from ..rag.retrieval import RERANK_MODEL, CorpusLoader, HybridIndex, chunks_for
+from ..security import provider_keys
+from ..security.auth import (
+    SESSION_COOKIE,
+    SESSION_TTL,
+    approve_user,
+    authenticate,
+    initialize,
+    new_session,
+    pending_users,
+    request_account,
+    require_user,
+    revoke,
+)
+from ..security.policy import project_investigation, visible_documents
 
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
@@ -61,11 +64,17 @@ async def lifespan(app):
     work = runtime_dir()
     work.mkdir(exist_ok=True)
     state["db"] = work / "audit.sqlite"
-    with sqlite3.connect(state["db"]) as db:
+    with connect(state["db"]) as db:
         db.execute(
             "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, case_id TEXT, created REAL, payload TEXT)"
         )
-    os.chmod(state["db"], 0o600)
+    private_local_file(state["db"])
+    from ..storage.database import remote
+
+    if remote():
+        from ..storage.uploads import initialize as initialize_uploads
+
+        initialize_uploads()
     yield
 
 
@@ -79,7 +88,19 @@ app = FastAPI(
 )
 
 
+import psycopg
 from fastapi.exceptions import RequestValidationError
+
+from ..storage.errors import StorageUnavailable
+
+
+@app.exception_handler(StorageUnavailable)
+@app.exception_handler(psycopg.Error)
+def storage_error(request: Request, error):
+    return JSONResponse(
+        {"detail": "Saved data is temporarily unavailable. Please try again."},
+        status_code=503,
+    )
 
 
 @app.exception_handler(RequestValidationError)
@@ -262,6 +283,7 @@ async def upload_pdf(cid: str, request: Request, user=Depends(require_user)):
 
 
 @app.get("/api/cases/{cid}/uploads/{did}/chunks")
+@bounded_inference
 def upload_chunks(
     cid: str,
     did: str,
@@ -293,10 +315,9 @@ def delete_upload(cid: str, did: str, user=Depends(require_user)):
     record = uploads.get_record(user, cid, did)
     if not record:
         raise HTTPException(404, "Document not found")
-    for extension in (".json", ".pdf"):
-        (uploads.folder(user, cid) / (did + extension)).unlink(missing_ok=True)
+    uploads.remove(user, cid, did)
     uploads.remove_cached_indexes(did)
-    with sqlite3.connect(state["db"]) as db:
+    with connect(state["db"]) as db:
         rows = db.execute(
             "SELECT id,payload FROM runs WHERE case_id=?", (cid,)
         ).fetchall()
@@ -406,6 +427,18 @@ def source_pdf(cid: str, did: str, user=Depends(require_user)):
     if not any(d["id"] == did for d in docs):
         raise HTTPException(404, "Document not found")
     if did.startswith("UPLOAD-"):
+        from ..storage.database import remote
+
+        if remote():
+            from ..storage.uploads import read_pdf
+
+            return Response(
+                read_pdf(user, cid, did),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": "inline; filename=private-document.pdf"
+                },
+            )
         path = uploads.folder(user, cid) / (did + ".pdf")
     else:
         path = ROOT / "data/corpus" / f"{did}.pdf"
@@ -421,6 +454,7 @@ class Query(BaseModel):
 
 
 @app.post("/api/cases/{cid}/ask")
+@bounded_inference
 def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
     authorize(cid, user)
     question = query.question.strip()
@@ -475,7 +509,7 @@ def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
         "evidence": result.get("evidence", []),
         "duration_ms": round((time.perf_counter() - started) * 1000),
     }
-    with sqlite3.connect(state["db"]) as db:
+    with connect(state["db"]) as db:
         db.execute(
             "INSERT INTO runs VALUES (?,?,?,?)",
             (run["id"], cid, time.time(), json.dumps(run)),
@@ -486,7 +520,7 @@ def ask(cid: str, query: Query, request: Request, user=Depends(require_user)):
 @app.get("/api/cases/{cid}/history")
 def history(cid: str, user=Depends(require_user)):
     authorize(cid, user)
-    with sqlite3.connect(state["db"]) as db:
+    with connect(state["db"]) as db:
         rows = db.execute(
             "SELECT payload FROM runs WHERE case_id=? ORDER BY created DESC LIMIT 20",
             (cid,),
@@ -544,8 +578,9 @@ def packet(cid: str, user=Depends(require_user)):
 
 @app.get("/api/cases/{cid}/packet.pdf")
 def packet_pdf(cid: str, user=Depends(require_user)):
-    from ..documents.rendering import render
     from starlette.background import BackgroundTask
+
+    from ..documents.rendering import render
 
     response = packet(cid, user)
     folder = runtime_dir() / "exports"

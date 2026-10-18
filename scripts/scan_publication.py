@@ -46,7 +46,10 @@ def scan():
         v
         for k, v in dotenv_values(ROOT / ".env").items()
         if v
-        and any(w in k.upper() for w in ("KEY", "SECRET", "TOKEN", "PASSWORD"))
+        and (
+            k == "DATABASE_URL"
+            or any(w in k.upper() for w in ("KEY", "SECRET", "TOKEN", "PASSWORD"))
+        )
         and len(v) >= 10
     ]
     patterns = [

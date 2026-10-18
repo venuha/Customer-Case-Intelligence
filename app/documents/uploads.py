@@ -1,12 +1,18 @@
 """Private, owner-scoped supplemental PDFs; never alter verified financial facts."""
 
-import hashlib, json, os
-from datetime import datetime, timezone
-from uuid import uuid4
+import hashlib
+import json
+import os
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
+
 import pymupdf
 from langchain_core.documents import Document
+
 from ..config import runtime_dir
+from ..storage import uploads as durable_uploads
+from ..storage.database import remote
 
 MAX_BYTES = 10 * 1024 * 1024
 
@@ -23,6 +29,8 @@ def folder(user, cid):
 
 
 def records(user, cid):
+    if remote():
+        return durable_uploads.records(user, cid)
     return [
         json.loads(path.read_text())
         for path in sorted(folder(user, cid).glob("*.json"))
@@ -58,7 +66,7 @@ def store_pdf(user, cid, name, content):
         "kind": "user_upload",
         "title": name,
         "source": "Your private PDF upload",
-        "date": datetime.now(timezone.utc).date().isoformat(),
+        "date": datetime.now(UTC).date().isoformat(),
         "synthetic": False,
         "facts": {},
         "owner": user.username,
@@ -66,6 +74,9 @@ def store_pdf(user, cid, name, content):
         "pages": pages,
         "text": "\n\n".join(pages),
     }
+    if remote():
+        durable_uploads.save(user, cid, record, content)
+        return record
     path = folder(user, cid) / did
     path.with_suffix(".pdf").write_bytes(content)
     temporary = path.with_suffix(".json.tmp")
@@ -141,3 +152,11 @@ def remove_cached_indexes(did):
         ).hexdigest()[:20]
         (path.parent / (fingerprint + ".npy")).unlink(missing_ok=True)
         path.unlink(missing_ok=True)
+
+
+def remove(user, cid, did):
+    if remote():
+        durable_uploads.remove(user, cid, did)
+    else:
+        for extension in (".json", ".pdf"):
+            (folder(user, cid) / (did + extension)).unlink(missing_ok=True)

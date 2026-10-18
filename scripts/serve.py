@@ -16,16 +16,22 @@ def main():
         port = int(os.getenv("PORT", "8000"))
         if not 1 <= port <= 65535:
             raise ValueError("PORT must be between 1 and 65535.")
+        if os.getenv("REQUIRE_DURABLE_STORAGE") == "true":
+            required = ("DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY")
+            if not all(os.getenv(key) for key in required):
+                raise ValueError(
+                    "Configure the private database and document storage before hosted startup."
+                )
         # Child directories avoid changing ownership/permissions of the disk mount itself.
         runtime_dir()
         index_dir()
         bootstrap_admin()
-    except (OSError, ValueError) as error:
+    except Exception as error:
         # Our validation errors contain no values from private configuration.
         message = (
             str(error)
             if isinstance(error, ValueError)
-            else "Persistent storage is not writable by the application user."
+            else "Persistent storage could not be initialized. Check private server configuration."
         )
         raise SystemExit("Startup configuration error: " + message) from None
     os.execvp(

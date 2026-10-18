@@ -2,7 +2,8 @@
 
 import json
 import os
-import sqlite3
+
+from app.storage.database import connect, duplicate_error
 
 from ..config import data_dir
 from .auth import create_user, database, initialize
@@ -10,7 +11,7 @@ from .auth import create_user, database, initialize
 
 def bootstrap_admin():
     initialize()
-    with sqlite3.connect(database()) as db:
+    with connect(database()) as db:
         if db.execute(
             "SELECT 1 FROM users WHERE role='head' AND active=1 LIMIT 1"
         ).fetchone():
@@ -24,7 +25,9 @@ def bootstrap_admin():
     cases = [case["id"] for case in json.loads((data_dir() / "cases.json").read_text())]
     try:
         create_user(username, password, "head", cases)
-    except sqlite3.IntegrityError:
+    except Exception as error:
+        if not duplicate_error(error):
+            raise
         raise ValueError(
             "Bootstrap username already exists; choose another username or use local account administration."
         ) from None

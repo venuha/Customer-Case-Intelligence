@@ -71,7 +71,11 @@ def test_blueprint_keeps_secrets_out_of_source_and_state_on_disk():
     settings = {item["key"]: item for item in service["envVars"]}
     for key in ("PINECONE_API_KEY", "OPENAI_API_KEY", "CCI_BOOTSTRAP_PASSWORD"):
         assert settings[key] == {"key": key, "sync": False}
-    mount = service["disk"]["mountPath"] + "/"
+    assert service["plan"] == "free" and "disk" not in service
+    assert settings["REQUIRE_DURABLE_STORAGE"]["value"] == "true"
+    for key in ("DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"):
+        assert settings[key] == {"key": key, "sync": False}
+    mount = "/app/work/"
     for key in ("CCI_RUNTIME_DIR", "CCI_INDEX_DIR", "EMBEDDING_CACHE"):
         assert settings[key]["value"].startswith(mount)
     assert service["numInstances"] == 1

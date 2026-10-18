@@ -1,7 +1,13 @@
 """Process-local, session-bound provider credentials. Never serialize these values."""
 
-import hashlib, os, time, threading, sqlite3
+import hashlib
+import os
+import threading
+import time
 from contextvars import ContextVar
+
+from app.storage.database import connect
+
 from .auth import SESSION_TTL, database
 
 _current = ContextVar("provider_key", default=None)
@@ -16,7 +22,7 @@ def _id(token):
 def set_key(token, key):
     if not token or not key or len(key) > 512 or any(c.isspace() for c in key):
         raise ValueError("Enter a valid API key without whitespace.")
-    with sqlite3.connect(database()) as db:
+    with connect(database()) as db:
         session = db.execute(
             "SELECT expires FROM sessions WHERE token_hash=?", (_id(token),)
         ).fetchone()

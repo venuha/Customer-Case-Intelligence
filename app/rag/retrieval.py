@@ -5,16 +5,18 @@ import json
 import os
 import re
 from functools import lru_cache
-from threading import Lock
-import tiktoken
 from pathlib import Path
+from threading import Lock
+
 import numpy as np
+import tiktoken
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from rank_bm25 import BM25Okapi
-from ..security.policy import minimum_role, role_allows
+
 from ..config import index_dir
+from ..security.policy import minimum_role, role_allows
 
 ROOT = Path(__file__).resolve().parents[2]
 os.environ.setdefault("HF_HOME", str(ROOT / "work" / "huggingface"))
@@ -38,13 +40,24 @@ class LocalEmbeddings(Embeddings):
             "BAAI/bge-small-en-v1.5",
             cache_dir=str(ROOT / os.getenv("EMBEDDING_CACHE", "work/models")),
             threads=2,
+            enable_cpu_mem_arena=os.getenv("CCI_LOW_MEMORY") != "true",
         )
         self.memo = {}
 
     def embed_documents(self, texts):
         missing = list(dict.fromkeys(t for t in texts if t not in self.memo))
         if missing:
-            values = [v.tolist() for v in self.model.embed(missing, batch_size=8)]
+            values = [
+                v.tolist()
+                for v in self.model.embed(
+                    missing,
+                    batch_size=1 if os.getenv("CCI_LOW_MEMORY") == "true" else 8,
+                )
+            ]
+            if os.getenv("CCI_LOW_MEMORY") == "true":
+                # Keep private document vectors request-local instead of accumulating across users.
+                current = dict(zip(missing, values))
+                return [self.memo[t] if t in self.memo else current[t] for t in texts]
             self.memo.update(zip(missing, values))
         return [self.memo[t] for t in texts]
 
@@ -140,6 +153,7 @@ def get_reranker():
         RERANK_MODEL,
         cache_dir=str(ROOT / os.getenv("EMBEDDING_CACHE", "work/models")),
         threads=2,
+        enable_cpu_mem_arena=os.getenv("CCI_LOW_MEMORY") != "true",
     )
 
 
@@ -266,7 +280,7 @@ class HybridIndex:
                     model.rerank(
                         query,
                         [reranker_passage(self.docs[ids[j]]) for j in ordered],
-                        batch_size=8,
+                        batch_size=1 if os.getenv("CCI_LOW_MEMORY") == "true" else 8,
                     )
                 )
             cross_scores = dict(zip(ordered, map(float, values)))

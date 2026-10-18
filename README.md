@@ -120,4 +120,4 @@ The findings are mixed: reranking improved fixed-chunk context precision and sem
 
 ## Hosted deployment
 
-The Render Blueprint provisions a public HTTPS application with a persistent disk and a private first administrator. Follow [the deployment guide](docs/deployment.md) for server-side secrets, first login, storage paths and the single-process limitation. Local accounts and private `.env` files are excluded from the Docker image. Review the selected hosting price before creating the service.
+The Render Free Blueprint uses Supabase for durable accounts and private PDFs, with a private first administrator and a public HTTPS application URL. Follow [the deployment guide](docs/deployment.md) for server-side secrets, first login, storage paths and the single-process limitation. Local accounts and private `.env` files are excluded from the Docker image. Choose only the Free plans; no payment details are required for this setup. Free services can sleep or pause.
